@@ -1,0 +1,3 @@
+[submodule "modules/Generator"]
+	path = modules/Generator
+	url = git@github.com:TheLartians/Generator.git
