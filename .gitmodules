@@ -4,3 +4,6 @@
 [submodule "modules/Event"]
 	path = modules/Event
 	url = git@github.com:TheLartians/Event.git
+[submodule "modules/NDArray"]
+	path = modules/NDArray
+	url = git@github.com:TheLartians/NDArray.git
