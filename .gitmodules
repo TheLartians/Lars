@@ -1,3 +1,6 @@
 [submodule "modules/Generator"]
 	path = modules/Generator
 	url = git@github.com:TheLartians/Generator.git
+[submodule "modules/Event"]
+	path = modules/Event
+	url = git@github.com:TheLartians/Event.git
