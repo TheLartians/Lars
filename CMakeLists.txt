@@ -18,8 +18,8 @@ project(Lars)
 set(LARS_LIBRARY TRUE CACHE INTERNAL "")
 
 # ---- Configuration variables ----
-
 set(LARS_BUILD_EXAMPLES FALSE CACHE BOOL "build the examples included in the lars libraries")
+set(LARS_BUILD_TESTS FALSE CACHE BOOL "build the tests included in the lars libraries")
 
 # ---- Init lists ----
 
