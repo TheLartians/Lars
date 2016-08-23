@@ -7,3 +7,6 @@
 [submodule "modules/NDArray"]
 	path = modules/NDArray
 	url = git@github.com:TheLartians/NDArray.git
+[submodule "modules/Parser"]
+	path = modules/Parser
+	url = git@github.com:TheLartians/Parser.git
