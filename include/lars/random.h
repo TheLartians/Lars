@@ -21,6 +21,11 @@ namespace lars{
     return dis(random_number_engine());
   }
   
+  inline bool random_bool(float probability = 0.5){
+    std::bernoulli_distribution dis(probability);
+    return dis(random_number_engine());
+  }
+  
   template <class C> size_t random_index(const C &c){
     return uniform_random_int<size_t>(0,c.size()-1);
   }
