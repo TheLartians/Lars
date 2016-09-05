@@ -101,7 +101,7 @@ namespace lars {
         AlignedRectangle(const Vector &ll,const Vector &ur):ll(ll),ur(ur){ }
         AlignedRectangle(Scalar x1,Scalar y1,Scalar x2,Scalar y2):ll(Vector::create(x1,y1)),ur(Vector::create(x2,y2)){ }
         
-        bool is_valid()const{ return xmax() > xmin(); }
+        bool is_valid()const{ return xmax() >= xmin(); }
         
         Scalar &xmin(){ return ll(0);  }
         Scalar &xmax(){ return ur(0); }
