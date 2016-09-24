@@ -111,7 +111,7 @@ namespace lars {
       return v.get_points();
     }
     
-    Rectangle<Vector> get_bounding_box()const{
+    AlignedRectangle<Vector> get_bounding_box()const{
       PathVisitors::BoundingBoxVisitor<Vector> v;
       v.visit(this);
       return v.get_bounding_box();
@@ -394,7 +394,7 @@ namespace lars {
     };
     
     template <typename Vector> class TouchingPointResolver:public PathVisitor<Vector>{
-      std::unordered_map<Vector,const Vector *,ArrayHasher<Vector, typename Vector::Scalar>> points;
+      std::unordered_map<Vector,const Vector *,ArrayHasher> points;
       
       const Vector * last_point = nullptr;
       

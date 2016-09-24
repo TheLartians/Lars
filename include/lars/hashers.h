@@ -8,11 +8,12 @@ namespace lars {
     seed ^= std::hash<T>()(v) + 0x9e3779b9 + (seed<<6) + (seed>>2);
   }
   
-  template <class Array,class ScalarHasher> struct ArrayHasher {
-    ScalarHasher scalar_hasher;
-    std::size_t operator()(const Array& a) const {
+  struct ArrayHasher {
+    template <class Array> std::size_t operator()(const Array& a) const {
+      using ScalarHasher = std::hash<decltype(a.front())>;
+      ScalarHasher scalar_hasher;
       size_t seed = 0;
-      for(int i=0;i<a.size();++i) hash_combine(seed,scalar_hasher(a[i]));
+      for(auto &v:a) hash_combine(seed,scalar_hasher(v));
       return seed;
     }
   };
