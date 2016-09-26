@@ -150,7 +150,6 @@ namespace lars {
     };
     
     template<class Vector> bool convex_polygons_intersect(const Vector &p,const AlignedRectangle<Vector> &rect){
-      if(rect.xmin() > rect.xmax()) throw "1";
       return p(0) >= rect.xmin() && p(0) <= rect.xmax() && p(1) >= rect.ymin() && p(1) <= rect.ymax();
     }
     
