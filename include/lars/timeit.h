@@ -6,6 +6,7 @@
 #include <cmath>
 #include <string>
 #include <lars/iterators.h>
+#include <lars/to_string.h>
 
 namespace lars {
   
