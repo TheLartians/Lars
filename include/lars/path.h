@@ -14,6 +14,15 @@
 #include <lars/rectangle.h>
 #include <lars/math.h>
 
+#define PATHDEBUG
+#ifdef PATHDEBUG
+#include <iostream>
+#define PATHLOGV(value) { std::cout << #value << " = " << value << std::endl;  }
+#else
+#define PATHLOGV(value)
+#endif
+
+
 namespace lars {
   
   namespace curves{
@@ -99,7 +108,7 @@ namespace lars {
       this->emplace_back(new Curve(args...));
     }
     
-    std::vector<Vector> get_segmented_path_with_angle_tolerance(double angle_tolerance,double length_tolerance = 0)const{
+    std::vector<Vector> get_segmented_path_with_angle_tolerance(double angle_tolerance,double length_tolerance = 1e-5)const{
       PathVisitors::RecursiveSegmenter<Vector> v(angle_tolerance,length_tolerance);
       v.visit(this);
       return v.get_points();
@@ -231,11 +240,11 @@ namespace lars {
         
         scalar cos_squared = dot*dot / (l1_squared * l2_squared);
         
-        auto length_test = [&](){ return l1_squared < length_tolerance_squared && l2_squared < length_tolerance_squared; };
-        auto angle_test  = [&](){ return sign(dot) * cos_squared > cos_angle_tolerance_squared; };
+        auto length_test = [&](){ return l1_squared <= length_tolerance_squared && l2_squared <= length_tolerance_squared; };
+        auto angle_test  = [&](){ return sign(dot) * cos_squared >= cos_angle_tolerance_squared; };
         
         if( length_test() || angle_test() ) add_point(B);
-        else {
+        else {          
           Vector C1 = A + AC/2;
           Vector C2 = B + BC/2;
           Vector M  = C1 + (C2 - C1)/2;
