@@ -14,15 +14,6 @@
 #include <lars/rectangle.h>
 #include <lars/math.h>
 
-#define PATHDEBUG
-#ifdef PATHDEBUG
-#include <iostream>
-#define PATHLOGV(value) { std::cout << #value << " = " << value << std::endl;  }
-#else
-#define PATHLOGV(value)
-#endif
-
-
 namespace lars {
   
   namespace curves{
