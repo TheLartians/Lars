@@ -152,11 +152,11 @@ namespace lars {
         return (1-t)*p0+t*p1;
       }
       
-      Vector intermediate_Conic(Vector p0,Vector p1,Vector p2,real t){
+      Vector intermediate_conic(Vector p0,Vector p1,Vector p2,real t){
         return (1-t)*(1-t)*p0 + 2*t*(1-t)*p1 + t*t*p2;
       }
       
-      Vector intermediate_Cubic(Vector p0,Vector p1,Vector p2,Vector p3,real t){
+      Vector intermediate_cubic(Vector p0,Vector p1,Vector p2,Vector p3,real t){
         return (1-t)*(1-t)*(1-t)*p0 + 3*(1-t)*(1-t)*t*p1 + 3*(1-t)*t*t*p2 + t*t*t*p3;
       }
       
@@ -190,7 +190,7 @@ namespace lars {
         auto from = current_point();
         for(auto i:range<unsigned>(1,steps+1)){
           real t = i/double(steps+1);
-          add_point(intermediate_Conic(from,e->control,e->to,t));
+          add_point(intermediate_conic(from,e->control,e->to,t));
         }
         add_point(e->to);
       }
@@ -199,7 +199,7 @@ namespace lars {
         auto from = current_point();
         for(auto i:range<unsigned>(1,steps+1)){
           real t = i/double(steps+1);
-          add_point(intermediate_Cubic(from,e->control_1,e->control_2,e->to,t));
+          add_point(intermediate_cubic(from,e->control_1,e->control_2,e->to,t));
         }
         add_point(e->to);
       }
@@ -222,7 +222,7 @@ namespace lars {
       const Vector & current_point(){ return points.back(); }
       virtual void add_point(const Vector &v){ points.push_back(v); }
       
-      void draw_Conic_Curve(const Vector &A,const Vector &C,const Vector &B){
+      void draw_conic_curve(const Vector &A,const Vector &C,const Vector &B){
         Vector AC = (C - A);
         Vector BC = (C - B);
         
@@ -239,12 +239,12 @@ namespace lars {
           Vector C1 = A + AC/2;
           Vector C2 = B + BC/2;
           Vector M  = C1 + (C2 - C1)/2;
-          draw_Conic_Curve(A, C1, M);
-          draw_Conic_Curve(M, C2, B);
+          draw_conic_curve(A, C1, M);
+          draw_conic_curve(M, C2, B);
         }
       }
       
-      void draw_Cubic_Curve(const Vector &A,const Vector &C1,const Vector &C2,const Vector &B){
+      void draw_cubic_curve(const Vector &A,const Vector &C1,const Vector &C2,const Vector &B){
         
         Vector AC1 = C1 - A;
         Vector BC2 = C2 - B;
@@ -271,8 +271,8 @@ namespace lars {
           
           Vector M = C12 + (C21 - C12)/2;
 
-          draw_Cubic_Curve(A, C11, C12, M);
-          draw_Cubic_Curve(M, C21, C22, B);
+          draw_cubic_curve(A, C11, C12, M);
+          draw_cubic_curve(M, C21, C22, B);
         }
       }
       
@@ -297,11 +297,11 @@ namespace lars {
       }
       
       void visit(const curves::Conic<Vector> * e){
-        draw_Conic_Curve(current_point(),e->control,e->to);
+        draw_conic_curve(current_point(),e->control,e->to);
       }
       
       void visit(const curves::Cubic<Vector> * e){
-        draw_Cubic_Curve(current_point(),e->control_1,e->control_2,e->to);
+        draw_cubic_curve(current_point(),e->control_1,e->control_2,e->to);
       }
       
       std::vector<Vector> get_points(){
