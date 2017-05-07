@@ -95,10 +95,22 @@ namespace lars {
     void accept(PathVisitor<Vector> *v){ v->visit(this); }
     void accept(ConstPathVisitor<Vector> *v)const{ v->visit(this); }
     
-    template < class Curve,typename...Args> void add_point(Args... args){
+    template < class Curve,typename...Args> void add_curve(Args... args){
       this->emplace_back(new Curve(args...));
     }
     
+    void line_to(const Vector &point){
+      add_curve<curves::Line<Vector>>(point);
+    }
+    
+    void conic_to(const Vector &control,const Vector &point){
+      add_curve<curves::Conic<Vector>>(control,point);
+    }
+
+    void cubic_to(const Vector &control_a,const Vector &control_b,const Vector &point){
+      add_curve<curves::Cubic<Vector>>(control_a,control_b,point);
+    }
+
     std::vector<Vector> get_segmented_path_with_angle_tolerance(double angle_tolerance,double length_tolerance = 1e-5)const{
       PathVisitors::RecursiveSegmenter<Vector> v(angle_tolerance,length_tolerance);
       v.visit(this);
@@ -139,9 +151,9 @@ namespace lars {
       Path<Vector> * copy;
       CopyVisitor(Path<Vector> *c):copy(c){}
       virtual void visit(const Path<Vector> *p){ copy->start = p->start; for(auto &c:*p) c->accept(this); }
-      virtual void visit(const curves::Line<Vector> *c){ copy->template add_point<curves::Line<Vector>>(*c); }
-      virtual void visit(const curves::Conic<Vector> *c){ copy->template add_point<curves::Conic<Vector>>(*c); }
-      virtual void visit(const curves::Cubic<Vector> *c){ copy->template add_point<curves::Cubic<Vector>>(*c); }
+      virtual void visit(const curves::Line<Vector> *c){ copy->template add_curve<curves::Line<Vector>>(*c); }
+      virtual void visit(const curves::Conic<Vector> *c){ copy->template add_curve<curves::Conic<Vector>>(*c); }
+      virtual void visit(const curves::Cubic<Vector> *c){ copy->template add_curve<curves::Cubic<Vector>>(*c); }
     };
     
     template <typename Vector> class IncrementalSegmenter:public ConstPathVisitor<Vector>{
@@ -214,10 +226,10 @@ namespace lars {
     template <typename Vector> class RecursiveSegmenter:public ConstPathVisitor<Vector>{
       
       std::vector<Vector> points;
-      using scalar = typename Vector::Scalar;
+      using Scalar = typename Vector::Scalar;
       
-      scalar angle_tolerance,cos_angle_tolerance_squared,cos_half_angle_tolerance_squared;
-      scalar length_tolerance,length_tolerance_squared;
+      Scalar angle_tolerance,cos_angle_tolerance_squared,cos_half_angle_tolerance_squared;
+      Scalar length_tolerance,length_tolerance_squared;
       
       const Vector & current_point(){ return points.back(); }
       virtual void add_point(const Vector &v){ points.push_back(v); }
@@ -226,10 +238,10 @@ namespace lars {
         Vector AC = (C - A);
         Vector BC = (C - B);
         
-        scalar l1_squared = AC.norm_squared(), l2_squared = BC.norm_squared();
-        scalar dot = (-AC).dot(BC);
+        Scalar l1_squared = AC.norm_squared(), l2_squared = BC.norm_squared();
+        Scalar dot = (-AC).dot(BC);
         
-        scalar cos_squared = dot*dot / (l1_squared * l2_squared);
+        Scalar cos_squared = dot*dot / (l1_squared * l2_squared);
         
         auto length_test = [&](){ return l1_squared <= length_tolerance_squared && l2_squared <= length_tolerance_squared; };
         auto angle_test  = [&](){ return sign(dot) * cos_squared >= cos_angle_tolerance_squared; };
@@ -250,13 +262,13 @@ namespace lars {
         Vector BC2 = C2 - B;
         Vector C1C2 = C2-C1;
         
-        scalar l1_squared = AC1.norm_squared(), l2_squared = BC2.norm_squared(), l3_squared = C1C2.norm_squared();
+        Scalar l1_squared = AC1.norm_squared(), l2_squared = BC2.norm_squared(), l3_squared = C1C2.norm_squared();
         
-        scalar dot1 = AC1.dot(C1C2);
-        scalar dot2 = (-C1C2).dot(BC2);
+        Scalar dot1 = AC1.dot(C1C2);
+        Scalar dot2 = (-C1C2).dot(BC2);
         
-        scalar cos1_squared = dot1*dot1 / (l1_squared * l3_squared);
-        scalar cos2_squared = dot2*dot2 / (l2_squared * l3_squared);
+        Scalar cos1_squared = dot1*dot1 / (l1_squared * l3_squared);
+        Scalar cos2_squared = dot2*dot2 / (l2_squared * l3_squared);
         
         auto length_test = [&](){ return l1_squared < length_tolerance_squared && l2_squared < length_tolerance_squared && l3_squared < length_tolerance_squared; };
         auto angle_test  = [&](){ return sign(dot1) * cos1_squared > cos_half_angle_tolerance_squared && sign(dot2) * cos2_squared > cos_half_angle_tolerance_squared; };
@@ -278,7 +290,7 @@ namespace lars {
       
     public:
       
-      RecursiveSegmenter(scalar angle_tolerance,scalar length_tolerance):angle_tolerance(angle_tolerance),length_tolerance(length_tolerance){
+      RecursiveSegmenter(Scalar angle_tolerance,Scalar length_tolerance):angle_tolerance(angle_tolerance),length_tolerance(length_tolerance){
         if(fabs(angle_tolerance)  >= M_PI/2) throw std::domain_error("path segmentation angle tolerance must be smaller than pi/2");
         if(length_tolerance <  0) throw std::domain_error("path segmentation length tolerance must be larger than zero");
         cos_angle_tolerance_squared = cos(angle_tolerance)*cos(angle_tolerance);
