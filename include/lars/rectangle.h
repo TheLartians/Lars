@@ -51,7 +51,8 @@ namespace lars {
       
         Scalar width() const{ return extent()[0].norm(); }
         Scalar height()const{ return extent()[1].norm(); }
-        
+        Vector size()const{ return Vector(width(),height()); }
+      
         Vector lower_left()const { return center() + ( - extent()[0] - extent()[1] ) / 2 ; }
         Vector upper_right()const{ return center() + ( extent()[0] + extent()[1] ) / 2 ; }
         Vector upper_left()const { return center() + ( - extent()[0] + extent()[1] ) / 2 ; }
@@ -117,6 +118,7 @@ namespace lars {
         Scalar width() const{ return fabs(ur(0) - ll(0)); }
         Scalar height()const{ return fabs(ur(1) - ll(1)); }
         Vector center()const{ return (ll + ur)/2; }
+        Vector size()const{ return Vector(width(),height()); }
         
         AlignedRectangle operator+(const Vector &v)const  { return AlignedRectangle(ll+v,ur+v); }
         AlignedRectangle operator*(const Scalar &v)const  { return AlignedRectangle(ll*v,ur*v); }
