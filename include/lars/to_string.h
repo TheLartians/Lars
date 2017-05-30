@@ -33,14 +33,11 @@ namespace lars {
     return stream.str();
   }
 
-  template <typename T> std::wstring to_wstring(T value ) {  // tobias
+  template <typename T> std::wstring to_wstring(T value ) {
       std::ostringstream os ;
       os << value ;
       auto str = os.str(); 
       return std::wstring(str.begin(),str.end()) ;
     }
-
-
-
   
 }
