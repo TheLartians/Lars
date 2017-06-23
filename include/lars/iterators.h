@@ -315,7 +315,7 @@ namespace lars {
     
     struct value_type{
       unsigned index;
-      typename std::iterator_traits<iterator>::value_type value;
+      typename std::iterator_traits<iterator>::reference value;
     };
     
     enumerate_iterator(const iterator _it):it(_it){}
