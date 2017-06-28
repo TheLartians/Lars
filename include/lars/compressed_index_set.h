@@ -56,7 +56,7 @@ namespace lars{
     
     auto it = _index_ranges.begin(),end = _index_ranges.end();
     for(;it != end;++it){
-      if(it->last + 1 >= first) break;
+      if(it->last + 1 >= first) break; // TODO: replace with smarter search algorithm
     }
     
     if(it == end){
