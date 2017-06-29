@@ -21,16 +21,16 @@ namespace lars{
     class Iterator{
     private:
       friend CompressedIndexSet<Index>;
-      typename std::list<IndexRange<Index>>::const_iterator it, end;
-      Index current;
+      typename std::list<IndexRange<Index>>::const_iterator it;
+      Index offset = 0;
     public:
-      const Index &operator*(){ return current; }
-      void operator++(){ if(current+1 <= it->last) current++; else{ ++it; if(it != end) current = it->first; else current++; } }
-      bool operator!=(const Iterator &other){ return current != other.current; }
+      Index operator*(){ return it->first + offset; }
+      void operator++(){ if(**this < it->last) offset++; else{ ++it; offset = 0; } }
+      bool operator!=(const Iterator &other){ return it != other.it || offset != other.offset; }
     };
     
-    Iterator begin()const{ Iterator it; it.it = index_ranges().begin(); it.end = index_ranges().end(); it.current = index_ranges().front().first; return it; }
-    Iterator end()const{ Iterator it; it.it = index_ranges().end(); it.current = index_ranges().back().last+1; return it; }
+    Iterator begin()const{ Iterator it; it.it = index_ranges().begin(); return it; }
+    Iterator end()const{ Iterator it; it.it = index_ranges().end(); return it; }
     
     void insert_index_range(Index first,Index last);
     void remove_index_range(Index first,Index last);
@@ -41,8 +41,8 @@ namespace lars{
     const auto &index_ranges()const{ return _index_ranges; }
     void clear(){ _index_ranges.clear(); }
     
-    Index min()const{ return index_ranges().front().first; }
-    Index max()const{ return index_ranges().back().last; }
+    Index min()const{ assert(index_ranges().size() > 0); return index_ranges().front().first; }
+    Index max()const{ assert(index_ranges().size() > 0); return index_ranges().back().last; }
     
     void add_indices(const CompressedIndexSet<Index> &other){ for(auto &r:other.index_ranges()) insert_index_range(r.first, r.last); }
     void remove_indices(const CompressedIndexSet<Index> &other){ for(auto &r:other.index_ranges()) remove_index_range(r.first, r.last); }
@@ -56,7 +56,8 @@ namespace lars{
     
     auto it = _index_ranges.begin(),end = _index_ranges.end();
     for(;it != end;++it){
-      if(it->last + 1 >= first) break; // TODO: replace with smarter search algorithm
+      // TODO: replace linear search with faster algorithm
+      if(it->last + 1 >= first) break;
     }
     
     if(it == end){
