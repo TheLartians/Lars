@@ -305,7 +305,8 @@ namespace lars {
       }
       
       void visit(const curves::Line<Vector> * e){
-        add_point(e->to);
+        auto d = points.back() - e->to;
+        if(d.dot(d) > length_tolerance_squared) add_point(e->to);
       }
       
       void visit(const curves::Conic<Vector> * e){
