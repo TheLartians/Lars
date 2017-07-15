@@ -1,4 +1,6 @@
 
+#include <stdexcept>
+
 namespace lars{
   
   class VisitableBase;
@@ -38,7 +40,7 @@ namespace lars{
     }
   };
   
-  template <class T,class Base> class InheritedVisitable:public virtual Base{
+  template <class T,class Base> class RecursiveVisitable:public virtual Base{
   public:
     void accept(VisitorBase &visitor)override{
       if(auto * casted = dynamic_cast<Visitor<T>*>(&visitor)){
@@ -49,5 +51,27 @@ namespace lars{
       }
     }
   };
+  
+  template <class T,class ... Bases> class IterativeVisitable:public virtual Bases ...{
+  private:
+
+    template <class Current> void try_to_accept(VisitorBase &visitor){
+      Current::accept(visitor);
+    }
+    
+    template <class Current,class Second,typename ... Rest> void try_to_accept(VisitorBase &visitor){
+      if(auto * casted = dynamic_cast<Visitor<Current>*>(&visitor)){
+        casted->visit(static_cast<Current &>(*this));
+        return;
+      }
+      try_to_accept<Second,Rest ...>(visitor);
+    }
+    
+  public:
+    void accept(VisitorBase &visitor)override{
+      try_to_accept<T, Bases...>(visitor);
+    }
+  };
+
   
 }
