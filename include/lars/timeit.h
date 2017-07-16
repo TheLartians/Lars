@@ -28,38 +28,66 @@ namespace lars {
     return lars::to_string(ns.count()) + "ns";
   }
   
-  template<size_t N = 1000, bool calculate_std = false,  class F,typename ... Args> __attribute__ ((noinline)) void timeit(const std::string &name,F f,Args & ... args){
-    using I = std::nano;
+  struct TimeItResult{
+    std::chrono::high_resolution_clock::duration duration;
+    size_t repititions = 0;
     
-    double squared = 0;
-    double total = 0;
-    
-    std::chrono::steady_clock::time_point start,end;
-    
-    if(!calculate_std) start = std::chrono::steady_clock::now();
-    
-    for(auto i UNUSED : range(N)){
-      if(calculate_std) start = std::chrono::steady_clock::now();
-      f(args ...);
-      if(calculate_std){
-        end = std::chrono::steady_clock::now();
-        auto diff = std::chrono::duration<double, I>( end - start ).count();
-        squared += diff * diff;
-        total += diff;
-      }
+    std::chrono::high_resolution_clock::duration average_duration()const{
+      return duration/repititions;
     }
-    
-    if(!calculate_std){
-      end = std::chrono::steady_clock::now();
-      total = std::chrono::duration<double, I>( end - start ).count();
-      std::cout << name << " took " << duration_to_string( std::chrono::duration<double, I>(total/N) ) << std::endl;
-    }
-    else{
-      double std = std::sqrt( squared/N - total/N  * total/N  ) ;
-      std::cout << name << " took " << duration_to_string(std::chrono::duration<double, I>(total/N) ) << " +/- " << duration_to_string( std::chrono::duration<double, I>(std)) << " ns" << std::endl;
-    }
+  };
+  
+  struct ExtendedTimeItResult{
+    TimeItResult best,worst,most_repititions;
+  };
+  
+  template <class Char> std::basic_ostream<Char> &operator<<(std::basic_ostream<Char> &stream,const TimeItResult &result){
+    stream << "average of " << result.repititions << ": " << duration_to_string(result.average_duration());
+    return stream;
   }
   
+  template <class Char> std::basic_ostream<Char> &operator<<(std::basic_ostream<Char> &stream,const ExtendedTimeItResult &result){
+    stream << '[';
+    stream << "worst: " << result.worst << ", ";
+    stream << "best: " << result.best << ", ";
+    stream << "most: " << result.most_repititions;
+    stream << ']';
+    return stream;
+  }
+  
+  template <typename F> TimeItResult time_it(const F &f,size_t repititions){
+    int idx = 0;
+    std::chrono::high_resolution_clock::time_point begin,end;
+    begin = std::chrono::high_resolution_clock::now();
+    for(;idx < repititions;++idx) f();
+    end = std::chrono::high_resolution_clock::now();
+    TimeItResult result;
+    result.duration = end - begin;
+    result.repititions = repititions;
+    return result;
+  }
+  
+  template <typename F> ExtendedTimeItResult time_it(const F &f,std::chrono::high_resolution_clock::duration timeout = std::chrono::seconds(1)){
+    ExtendedTimeItResult result;
+    size_t repititions = 1;
+    
+    std::chrono::high_resolution_clock::time_point begin,end;
+    end = begin = std::chrono::high_resolution_clock::now();
+    
+    result.worst = result.best = result.most_repititions = time_it(f,repititions);
+    repititions *= 2;
+    end  = std::chrono::high_resolution_clock::now();
+    
+    while(end - begin < timeout){
+      result.most_repititions = time_it(f,repititions);
+      if(result.most_repititions.average_duration() > result.worst.average_duration()) result.worst = result.most_repititions;
+      if(result.most_repititions.average_duration() < result.best.average_duration()) result.best = result.most_repititions;
+      if(repititions * 2 < repititions) break;
+      repititions *= 2;
+      end  = std::chrono::high_resolution_clock::now();
+    }
+    return result;
+  }
   
 }
 
