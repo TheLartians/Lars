@@ -49,10 +49,13 @@ namespace lars{
   
   template <typename First,typename Second,typename ... Rest> class Visitor<First,Second,Rest...>:public Visitor<First>,public Visitor<Second,Rest...>{
   public:
+    using ConstVisitor = lars::ConstVisitor<First,Second,Rest...>;
   };
   
   template <typename T> class Visitor<T>:public virtual VisitorBase{
   public:
+    using ConstVisitor = lars::ConstVisitor<T>;
+
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
     Visitor(){
       VisitorBase::derived_types.emplace(typeid(Visitor<T>),reinterpret_cast<void*>(this));
@@ -60,9 +63,6 @@ namespace lars{
 #endif
     virtual void visit(T &) = 0;
   };
-  
-  template <> class Visitor<>{ };
-  
   
   template <typename First,typename Second,typename ... Rest> class ConstVisitor<First,Second,Rest...>:public ConstVisitor<First>,public ConstVisitor<Second,Rest...>{
   public:
@@ -77,8 +77,6 @@ namespace lars{
 #endif
     virtual void visit(const T &) = 0;
   };
-  
-  template <> class ConstVisitor<>{ };
 
   
 #ifndef LARS_VISITOR_NO_EXCEPTIONS
@@ -113,7 +111,6 @@ namespace lars{
 #endif
       }
     }
-
     
   };
   
@@ -125,8 +122,8 @@ namespace lars{
     }
     
     template <class Current,class Second,typename ... Rest> void try_to_accept(VisitorBase &visitor){
-      if(auto casted = visitor.as_visitor_for<T>()){
-        casted->visit(static_cast<T &>(*this));
+      if(auto casted = visitor.as_visitor_for<Current>()){
+        casted->visit(static_cast<Current &>(*this));
         return;
       }
       try_to_accept<Second,Rest ...>(visitor);
@@ -137,8 +134,8 @@ namespace lars{
     }
     
     template <class Current,class Second,typename ... Rest> void try_to_accept(ConstVisitorBase &visitor)const{
-      if(auto casted = visitor.as_visitor_for<T>()){
-        casted->visit(static_cast<const T &>(*this));
+      if(auto casted = visitor.as_visitor_for<Current>()){
+        casted->visit(static_cast<const Current &>(*this));
         return;
       }
       try_to_accept<Second,Rest ...>(visitor);
@@ -153,6 +150,47 @@ namespace lars{
     
     void accept(ConstVisitorBase &visitor)const override{
       try_to_accept<T, Bases...>(visitor);
+    }
+    
+  };
+  
+  
+  template <typename ... Args> class StaticVisitor;
+  template <typename ... Args> class ConstStaticVisitor;
+  
+  template <class First,typename ... Rest> class StaticVisitor<First,Rest...>:public StaticVisitor<Rest...>{
+  public:
+    using ConstVisitor = lars::ConstStaticVisitor<First,Rest...>;
+    using StaticVisitor<Rest...>::visit;
+    virtual void visit(First &) = 0;
+  };
+  
+  template<> class StaticVisitor<>{ public: static void visit(){}; };
+  
+  template <class First,typename ... Rest> class ConstStaticVisitor<First,Rest...>:public ConstStaticVisitor<Rest...>{
+  public:
+    using ConstStaticVisitor<Rest...>::visit;
+    virtual void visit(const First &) = 0;
+  };
+  
+  template<> class ConstStaticVisitor<>{ public: static void visit(){}; };
+  
+  template <class StaticVisitor> class StaticVisitableBase{
+  public:
+    virtual void static_accept(StaticVisitor &visitor) = 0;
+    virtual void static_accept(typename StaticVisitor::ConstVisitor &visitor)const = 0;
+    virtual ~StaticVisitableBase(){}
+  };
+  
+  template <class T,class StaticVisitor> class StaticVisitable:public virtual StaticVisitableBase<StaticVisitor>{
+  public:
+    
+    virtual void static_accept(StaticVisitor &visitor)override{
+      visitor.visit(static_cast<T &>(*this));
+    }
+    
+    virtual void static_accept(typename StaticVisitor::ConstVisitor &visitor)const override{
+      visitor.visit(static_cast<const T &>(*this));
     }
     
   };

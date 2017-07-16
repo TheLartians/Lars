@@ -126,7 +126,7 @@ namespace lars {
     AlignedRectangle<Vector> get_bounding_box()const{
       PathVisitors::BoundingBoxVisitor<Vector> v;
       v.visit(this);
-      return v.get_bounding_box();
+      return v.bounding_box();
     }
     
     Path &operator*=(typename Vector::Scalar x){
