@@ -77,7 +77,6 @@ namespace lars{
 #endif
     virtual void visit(const T &) = 0;
   };
-
   
 #ifndef LARS_VISITOR_NO_EXCEPTIONS
   struct IncompatibleVisitorException:public std::exception{};
@@ -140,7 +139,6 @@ namespace lars{
       }
       try_to_accept<Second,Rest ...>(visitor);
     }
-
     
   public:
     
