@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <limits>
 #include <cmath>
+#include <iterator>
 
 namespace lars {
     
@@ -13,9 +14,12 @@ namespace lars {
         using Vector = V;
         using Scalar = typename Vector::Scalar;
         
-        struct const_iterator{
-            const Rectangle * parent;
-            unsigned char idx;
+      class const_iterator:public std::iterator<std::forward_iterator_tag, Vector>{
+      private:
+        const Rectangle * parent;
+        unsigned char idx;
+        friend Rectangle;
+      public:
             const_iterator(const Rectangle * p,unsigned char i):parent(p),idx(i){}
             void operator++(){ idx++; }
             Vector operator*()const{
@@ -76,19 +80,22 @@ namespace lars {
         using Vector = V;
         using Scalar = typename Vector::Scalar;
         
-        struct const_iterator{
-            const AlignedRectangle & parent;
-            unsigned char idx;
-            const_iterator(const AlignedRectangle & p,unsigned char i):parent(p),idx(i){}
-            const_iterator operator++(){ return const_iterator(parent,idx++); }
-            Vector operator*()const{
-                if(idx == 0) return parent.lower_left();
-                if(idx == 1) return parent.lower_right();
-                if(idx == 2) return parent.upper_right();
-                if(idx == 3) return parent.upper_left();
-                throw std::runtime_error("iterator overflow");
-            }
-            bool operator!=(const const_iterator &other)const{ return other.idx != idx || other.parent != parent; }
+      class const_iterator:public std::iterator<std::forward_iterator_tag, Vector>{
+      private:
+        friend AlignedRectangle;
+        const AlignedRectangle & parent;
+        unsigned char idx;
+      public:
+          const_iterator(const AlignedRectangle & p,unsigned char i):parent(p),idx(i){}
+          const_iterator operator++(){ return const_iterator(parent,idx++); }
+          Vector operator*()const{
+              if(idx == 0) return parent.lower_left();
+              if(idx == 1) return parent.lower_right();
+              if(idx == 2) return parent.upper_right();
+              if(idx == 3) return parent.upper_left();
+              throw std::runtime_error("iterator overflow");
+          }
+          bool operator!=(const const_iterator &other)const{ return other.idx != idx || other.parent != parent; }
         };
         
     private:

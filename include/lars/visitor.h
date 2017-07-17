@@ -142,6 +142,9 @@ namespace lars{
     
   public:
     
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Woverloaded-virtual"
+
     void accept(VisitorBase &visitor)override{
       try_to_accept<T, Bases...>(visitor);
     }
@@ -150,8 +153,13 @@ namespace lars{
       try_to_accept<T, Bases...>(visitor);
     }
     
+#pragma clang diagnostic pop
+
   };
   
+#define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
+#define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
+#define LARS_MAKE_STATIC_VISITABLE_AND_CONST_VISITABLE(VISITOR) LARS_MAKE_STATIC_VISITABLE(VISITOR) LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR::ConstVisitor)
   
   template <typename ... Args> class StaticVisitor;
   template <typename ... Args> class ConstStaticVisitor;
@@ -161,36 +169,6 @@ namespace lars{
     using ConstVisitor = lars::ConstStaticVisitor<First,Rest...>;
     using StaticVisitor<Rest...>::visit;
     virtual void visit(First &) = 0;
-  };
-  
-  template<> class StaticVisitor<>{ public: static void visit(){}; };
-  
-  template <class First,typename ... Rest> class ConstStaticVisitor<First,Rest...>:public ConstStaticVisitor<Rest...>{
-  public:
-    using ConstStaticVisitor<Rest...>::visit;
-    virtual void visit(const First &) = 0;
-  };
-  
-  template<> class ConstStaticVisitor<>{ public: static void visit(){}; };
-  
-  template <class StaticVisitor> class StaticVisitableBase{
-  public:
-    virtual void static_accept(StaticVisitor &visitor) = 0;
-    virtual void static_accept(typename StaticVisitor::ConstVisitor &visitor)const = 0;
-    virtual ~StaticVisitableBase(){}
-  };
-  
-  template <class T,class StaticVisitor> class StaticVisitable:public virtual StaticVisitableBase<StaticVisitor>{
-  public:
-    
-    virtual void static_accept(StaticVisitor &visitor)override{
-      visitor.visit(static_cast<T &>(*this));
-    }
-    
-    virtual void static_accept(typename StaticVisitor::ConstVisitor &visitor)const override{
-      visitor.visit(static_cast<const T &>(*this));
-    }
-    
   };
 
   
