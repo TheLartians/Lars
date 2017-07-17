@@ -178,17 +178,17 @@ namespace lars {
       void add_point(const Vector &v){ add_point(v.x(), v.y()); }
       template <class V> void add_polygon(const AlignedRectangle<V> &r){ add_point(r.lower_left()); add_point(r.upper_right()); }
       template <class Polygon> void add_polygon(const Polygon &v){ for(auto p:v) add_point(p); }
-      const AlignedRectangle<Vector> &get_bounding_box()const{ return bb; }
+      const AlignedRectangle<Vector> &bounding_box()const{ return bb; }
       
       BoundingBoxCreator & operator+=(const Vector &v){ bb += v; return *this; }
       BoundingBoxCreator & operator-=(const Vector &v){ bb -= v; return *this; }
       BoundingBoxCreator & operator*=(const Scalar &v){ bb *= v; return *this; }
       BoundingBoxCreator & operator/=(const Scalar &v){ bb /= v; return *this; }
 
-      template <class Polygon> static AlignedRectangle<Vector> get_bounding_box(Polygon p){
+      template <class Polygon> static AlignedRectangle<Vector> get_bounding_box(const Polygon &p){
         BoundingBoxCreator bbc;
         bbc.add_polygon(p);
-        return bbc.get_bounding_box();
+        return bbc.bounding_box();
       }
 
     };
