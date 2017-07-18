@@ -157,19 +157,53 @@ namespace lars{
 
   };
   
-#define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
-#define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
+#define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
+#define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
 #define LARS_MAKE_STATIC_VISITABLE_AND_CONST_VISITABLE(VISITOR) LARS_MAKE_STATIC_VISITABLE(VISITOR) LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR::ConstVisitor)
   
+  /*
+  template <class T> class StaticVisitable{
+  public:
+    virtual void static_accept(T &) = 0;
+  };
+  */
+   
   template <typename ... Args> class StaticVisitor;
-  template <typename ... Args> class ConstStaticVisitor;
   
   template <class First,typename ... Rest> class StaticVisitor<First,Rest...>:public StaticVisitor<Rest...>{
   public:
-    using ConstVisitor = lars::ConstStaticVisitor<First,Rest...>;
+    using ConstVisitor = lars::StaticVisitor<const First,const Rest...>;
     using StaticVisitor<Rest...>::visit;
     virtual void visit(First &) = 0;
   };
+
+  template <> class StaticVisitor<>{
+  protected:
+    static void visit();
+  };
+  
+  template <typename ... Args> class ForwardVisitsTo;
+  
+  template <class Visitor,class Target,class First,typename ... Rest> class ForwardVisitsTo<Visitor,Target,First,Rest...>:public virtual Visitor,public ForwardVisitsTo<Visitor,Target,Rest...>{
+  public:
+    using ConstVisitor = ForwardVisitsTo<typename Visitor::ConstVisitor,const Target,const First,const Rest...>;
+    using Visitor::visit;
+    void visit(First &visitable)override{ visit((Target &)visitable); }
+  };
+
+  template <class Visitor,class Target> class ForwardVisitsTo<Visitor,Target>{};
+  
+  template <typename ... Args> class RemoveVisitors;
+  
+  template <class Visitor,class First,typename ... Rest> class RemoveVisitors<Visitor,First,Rest...>:public virtual Visitor,public RemoveVisitors<Visitor,Rest...>{
+  public:
+    using ConstVisitor = RemoveVisitors<typename Visitor::ConstVisitor,const First,const Rest...>;
+    using Visitor::visit;
+    void visit(First &visitable)override = 0;
+  };
+  
+  template <class Visitor> class RemoveVisitors<Visitor>{};
+
 
   
 }
