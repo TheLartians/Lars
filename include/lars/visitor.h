@@ -3,30 +3,97 @@
 
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
 #include <unordered_map>
-#include <typeinfo>
-#include <typeindex>
 #endif
 
-#ifndef LARS_VISITOR_NO_EXCEPTIONS
+#include <typeinfo>
 #include <exception>
+
+#include <lars/dummy.h>
+
+// #define VISITOR_DEBUG
+#ifdef VISITOR_DEBUG
+#include <iostream>
+#define VISITOR_LOG(X) { std::cout << "visitor: " << this << ": " << X << std::endl; }
+#else
+#define VISITOR_LOG(X)
 #endif
+
 
 namespace lars{
+  
+  namespace visitor_helper{
+  
+    template <typename ... Args> class TypeList{ };
+    
+    template <typename ... Args> struct TypelistContains;
+    template <class First,typename ... Args,class T> struct TypelistContains<TypeList<First,Args...>,T>:public TypelistContains<TypeList<Args...>,T>{ };
+    template <typename ... Args,class T> struct TypelistContains<TypeList<T,Args...>,T>:public std::true_type{ };
+    template <class T> struct TypelistContains<TypeList<>,T>:public std::false_type{ };
+    
+    template <typename ... Args> struct PrependToTypeList;
+    template <typename ... Args> struct PrependToTypeList<TypeList<Args...>>{ using Type = TypeList<Args...>; };
+    template <typename ... Args,class T> struct PrependToTypeList<TypeList<Args...>,T>{ using Type = typename std::conditional<TypelistContains<TypeList<Args...>,T>::value, TypeList<Args...>, TypeList<T,Args...>>::type; };
+    template <typename ... Args,class First,typename ... Rest> struct PrependToTypeList<TypeList<Args...>,First,Rest...>{
+      using IfContains = typename PrependToTypeList<TypeList<Args...>,Rest...>::Type;
+      using IfDoesNotContain = typename PrependToTypeList<TypeList<First,Args...>,Rest...>::Type;
+      using Type = typename std::conditional<TypelistContains<TypeList<Args...>,First>::value, IfContains, IfDoesNotContain>::type;
+    };
+    
+    template <class A,class B> struct JoinTypeLists;
+    template <typename ... ArgsA,typename ... ArgsB> struct JoinTypeLists<TypeList<ArgsA...>,TypeList<ArgsB...>>{ using Type = typename PrependToTypeList<TypeList<ArgsA...>,ArgsB...>::Type; };
+    
+    template<typename T> struct to_void { typedef void type; };
+    
+    template <typename ... Args> struct ExtractBaseTypes;
+    
+    template <typename T, typename = void> struct AllBaseTypesOfSingleType{ using Type = TypeList<>; };
+    template <typename T> struct AllBaseTypesOfSingleType <T, typename to_void<typename T::VisitableBaseTypes>::type>{ using Type = typename ExtractBaseTypes<typename T::VisitableBaseTypes>::Type; };
+    
+    template <typename ... Args> struct AllBaseTypes;
+    template <class First,typename ... Args> struct AllBaseTypes<First,Args...>{
+      using Type = typename JoinTypeLists<typename AllBaseTypes<First>::Type, typename AllBaseTypes<Args...>::Type>::Type;
+    };
+    template <class T> struct AllBaseTypes<T>{ using Type = typename AllBaseTypesOfSingleType<T>::Type; };
+    
+    template <> struct ExtractBaseTypes<TypeList<>>{ using Type = TypeList<>; };
+    template <class First,typename ... Args> struct ExtractBaseTypes<TypeList<First,Args...>>{
+      using TypeOfFirst = typename PrependToTypeList< typename AllBaseTypes<First>::Type, First >::Type;
+      using Type = typename JoinTypeLists<TypeOfFirst,typename ExtractBaseTypes<TypeList<Args...>>::Type>::Type;
+    };
+    
+    template <typename Stream,typename ... Args> void operator<<(Stream &stream,TypeList<Args...>){
+      stream << '{';
+      lars::dummy_function(print_type_list_type(stream,TypeList<Args>())...);
+      stream << '}';
+    }
+    
+    template <typename Stream,class T> int print_type_list_type(Stream &stream,TypeList<T>){
+      stream << typeid(T).name() << ", ";
+      return 0;
+    }
+    
+  }
+  
+  
+  template <typename ... Args> class WithVisitableBaseClass{};
+  template <typename ... Args> class WithStaticVisitor{};
   
   class VisitableBase;
   template <typename ... Args> class Visitor;
   template <typename ... Args> class ConstVisitor;
   template <typename ... Args> class Visitable;
+  template <typename ... Args> class StaticVisitable;
+  template <typename ... Args> class VisitableAndStaticVisitable;
 
+#pragma mark base classes
+  
   template <template <typename ... Args> class Visitor> class VisitorBasePrototype{
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
   protected:
-    std::unordered_map<std::type_index,void *> derived_types;
+    virtual void * as_visitor_for(const std::type_info &) = 0;
   public:
     template <class T> Visitor<T> * as_visitor_for(){
-      auto it = derived_types.find(typeid(Visitor<T>));
-      if(it == derived_types.end()) return nullptr;
-      return reinterpret_cast<Visitor<T>*>(it->second);
+      return reinterpret_cast<Visitor<T> *>(as_visitor_for(typeid(T)));
     }
 #else
   public:
@@ -47,9 +114,24 @@ namespace lars{
     virtual ~VisitableBase(){}
   };
   
-  template <typename First,typename Second,typename ... Rest> class Visitor<First,Second,Rest...>:public Visitor<First>,public Visitor<Second,Rest...>{
+#pragma mark Visitor
+  
+  template <typename First,typename ... Rest> class Visitor<First,Rest...>:public Visitor<First>,public Visitor<Rest...>{
   public:
-    using ConstVisitor = lars::ConstVisitor<First,Second,Rest...>;
+    using ConstVisitor = lars::ConstVisitor<First,Rest...>;
+#ifdef LARS_VISITOR_NO_DYNAMIC_CAST
+  protected:
+    
+    void * try_to_cast_to(const std::type_info &requested){
+      if(typeid(First) == requested){ return reinterpret_cast<void*>(static_cast<Visitor<First>*>(this)); }
+      return Visitor<Rest...>::try_to_cast_to(requested);
+    }
+    
+  public:
+    void * as_visitor_for(const std::type_info &requested)override{
+      return try_to_cast_to(requested);
+    }
+#endif
   };
   
   template <typename T> class Visitor<T>:public virtual VisitorBase{
@@ -57,26 +139,60 @@ namespace lars{
     using ConstVisitor = lars::ConstVisitor<T>;
 
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
-    Visitor(){
-      VisitorBase::derived_types.emplace(typeid(Visitor<T>),reinterpret_cast<void*>(this));
+  protected:
+    
+    void * try_to_cast_to(const std::type_info &requested){
+      if(typeid(T) == requested){ return reinterpret_cast<void*>(static_cast<Visitor<T>*>(this)); }
+      return nullptr;
+    }
+    
+  public:
+    
+    void * as_visitor_for(const std::type_info &requested)override{
+      return try_to_cast_to(requested);
     }
 #endif
     virtual void visit(T &) = 0;
   };
   
-  template <typename First,typename Second,typename ... Rest> class ConstVisitor<First,Second,Rest...>:public ConstVisitor<First>,public ConstVisitor<Second,Rest...>{
+  template <typename First,typename ... Rest> class ConstVisitor<First,Rest...>:public ConstVisitor<First>,public ConstVisitor<Rest...>{
   public:
+#ifdef LARS_VISITOR_NO_DYNAMIC_CAST
+  protected:
+    
+    void * try_to_cast_to(const std::type_info &requested){
+      if(typeid(First) == requested){ return reinterpret_cast<void*>(static_cast<ConstVisitor<First>*>(this)); }
+      return ConstVisitor<Rest...>::try_to_cast_to(requested);
+    }
+    
+  public:
+    
+    void * as_visitor_for(const std::type_info &requested)override{
+      return try_to_cast_to(requested);
+    }
+#endif
   };
   
   template <typename T> class ConstVisitor<T>:public virtual ConstVisitorBase{
-  public:
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
-    ConstVisitor(){
-      ConstVisitorBase::derived_types.emplace(typeid(ConstVisitor<T>),reinterpret_cast<void*>(this));
+  protected:
+    
+    void * try_to_cast_to(const std::type_info &requested){
+      if(typeid(T) == requested){ return reinterpret_cast<void*>(static_cast<ConstVisitor<T>*>(this)); }
+      return nullptr;
+    }
+    
+  public:
+    
+    void * as_visitor_for(const std::type_info &requested)override{
+      return try_to_cast_to(requested);
     }
 #endif
+  public:
     virtual void visit(const T &) = 0;
   };
+  
+#pragma mark Visitable
   
 #ifndef LARS_VISITOR_NO_EXCEPTIONS
   struct IncompatibleVisitorException:public std::exception{};
@@ -85,18 +201,14 @@ namespace lars{
   template <class T> class Visitable<T>:public virtual VisitableBase{
   public:
     
-#ifndef LARS_VISITOR_NO_EXCEPTIONS
     struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
-#endif
     
     void accept(VisitorBase &visitor)override{
       if(auto casted = visitor.as_visitor_for<T>()){
         casted->visit(static_cast<T &>(*this));
       }
       else{
-#ifndef LARS_VISITOR_NO_EXCEPTIONS
         throw IncompatibleVisitorException();
-#endif
       }
     }
     
@@ -105,42 +217,64 @@ namespace lars{
         casted->visit(static_cast<const T &>(*this));
       }
       else{
-#ifndef LARS_VISITOR_NO_EXCEPTIONS
         throw IncompatibleVisitorException();
-#endif
       }
     }
     
   };
   
-  template <class T,class ... Bases> class Visitable<T,Bases...>:public virtual Bases ...{
+  template <class T,class ... Bases> class Visitable<T,WithVisitableBaseClass<Bases...>>:public virtual Bases...,public virtual VisitableBase{
   private:
+    
+    struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
 
     template <class Current> void try_to_accept(VisitorBase &visitor){
-      Current::accept(visitor);
+      VISITOR_LOG("try to accept: " << typeid(Current).name());
+      if(auto casted = visitor.as_visitor_for<Current>()){
+        VISITOR_LOG("Success!");
+        casted->visit(static_cast<T &>(*this));
+      }
+      else{
+        throw IncompatibleVisitorException();
+      }
     }
     
     template <class Current,class Second,typename ... Rest> void try_to_accept(VisitorBase &visitor){
+      VISITOR_LOG("try to accept: " << typeid(Current).name());
       if(auto casted = visitor.as_visitor_for<Current>()){
+        VISITOR_LOG("Success!");
         casted->visit(static_cast<Current &>(*this));
         return;
       }
+      VISITOR_LOG("Continue with: " << typeid(Second).name());
       try_to_accept<Second,Rest ...>(visitor);
     }
 
     template <class Current> void try_to_accept(ConstVisitorBase &visitor)const{
-      Current::accept(visitor);
+      VISITOR_LOG("try to accept: " << typeid(Current).name());
+      if(auto casted = visitor.as_visitor_for<Current>()){
+        VISITOR_LOG("Success!");
+        casted->visit(static_cast<const T &>(*this));
+      }
+      else{
+        throw IncompatibleVisitorException();
+      }
     }
     
     template <class Current,class Second,typename ... Rest> void try_to_accept(ConstVisitorBase &visitor)const{
+      VISITOR_LOG("try to accept: " << typeid(Current).name());
       if(auto casted = visitor.as_visitor_for<Current>()){
         casted->visit(static_cast<const Current &>(*this));
+        VISITOR_LOG("Success!");
         return;
       }
+      VISITOR_LOG("Continue with: " << typeid(Second).name());
       try_to_accept<Second,Rest ...>(visitor);
     }
     
   public:
+    
+    using VisitableBaseTypes = visitor_helper::TypeList<Bases...>;
     
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
@@ -157,16 +291,22 @@ namespace lars{
 
   };
   
+  template <typename ... Args> struct ToWithVisitableBaseClass;
+  template <typename ... Args> struct ToWithVisitableBaseClass<visitor_helper::TypeList<Args...>>{
+    using Type = WithVisitableBaseClass<Args...>;
+  };
+  
+  template <class T,class B> class DerivedVisitable;
+  template <class T,typename ... Args> class DerivedVisitable<T,WithVisitableBaseClass<Args...>>{
+  public:
+    using BaseTypeList = typename visitor_helper::PrependToTypeList<typename visitor_helper::AllBaseTypes<Args...>::Type,Args...>::Type;
+    using Type = Visitable<T, typename ToWithVisitableBaseClass<BaseTypeList>::Type >;
+  };
+  
 #define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
 #define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
 #define LARS_MAKE_STATIC_VISITABLE_AND_CONST_VISITABLE(VISITOR) LARS_MAKE_STATIC_VISITABLE(VISITOR) LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR::ConstVisitor)
   
-  /*
-  template <class T> class StaticVisitable{
-  public:
-    virtual void static_accept(T &) = 0;
-  };
-  */
    
   template <typename ... Args> class StaticVisitor;
   
