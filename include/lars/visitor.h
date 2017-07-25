@@ -8,6 +8,7 @@
 #include <typeinfo>
 #include <exception>
 
+#include <lars/demangle.h>
 #include <lars/dummy.h>
 
 // #define VISITOR_DEBUG
@@ -23,53 +24,107 @@ namespace lars{
   
   namespace visitor_helper{
   
-    template <typename ... Args> class TypeList{ };
+    template <class T,int ORDER> struct OrderedType{ using Type = T; const static int value = ORDER; };
+    template <typename ... Args> class OrderedTypeSet{};
     
-    template <typename ... Args> struct TypelistContains;
-    template <class First,typename ... Args,class T> struct TypelistContains<TypeList<First,Args...>,T>:public TypelistContains<TypeList<Args...>,T>{ };
-    template <typename ... Args,class T> struct TypelistContains<TypeList<T,Args...>,T>:public std::true_type{ };
-    template <class T> struct TypelistContains<TypeList<>,T>:public std::false_type{ };
+    template <int ... Args> struct HighestOrder;
+    template <int first,int ... Rest> struct HighestOrder<first,Rest...>{ const static int value = HighestOrder<Rest...>::value; };
+    template <int last> struct HighestOrder<last>{ const static int value = last; };
+    template <> struct HighestOrder<>{ const static int value = 0; };
     
-    template <typename ... Args> struct PrependToTypeList;
-    template <typename ... Args> struct PrependToTypeList<TypeList<Args...>>{ using Type = TypeList<Args...>; };
-    template <typename ... Args,class T> struct PrependToTypeList<TypeList<Args...>,T>{ using Type = typename std::conditional<TypelistContains<TypeList<Args...>,T>::value, TypeList<Args...>, TypeList<T,Args...>>::type; };
-    template <typename ... Args,class First,typename ... Rest> struct PrependToTypeList<TypeList<Args...>,First,Rest...>{
-      using IfContains = typename PrependToTypeList<TypeList<Args...>,Rest...>::Type;
-      using IfDoesNotContain = typename PrependToTypeList<TypeList<First,Args...>,Rest...>::Type;
-      using Type = typename std::conditional<TypelistContains<TypeList<Args...>,First>::value, IfContains, IfDoesNotContain>::type;
+    template <typename ... Args> struct HighestOrderInOrderedTypeSet;
+    template <typename ... Args> struct HighestOrderInOrderedTypeSet<OrderedTypeSet<Args...>>{ const static int value = HighestOrder<Args::value...>::value; };
+    
+    template <int ... Args> struct LowestOrder;
+    template <int first,int ... Rest> struct LowestOrder<first,Rest...>{ const static int value = first; };
+    template <> struct LowestOrder<>{ const static int value = 0; };
+    
+    template <typename ... Args> struct LowestOrderInOrderedTypeSet;
+    template <typename ... Args> struct LowestOrderInOrderedTypeSet<OrderedTypeSet<Args...>>{ const static int value = LowestOrder<Args::value...>::value; };
+    
+    
+    template <typename ... Args> class Before{};
+    
+    template <typename ... Args> struct OrderedTypeSetContains;
+    template <class First,int FORDER,typename ... Args,class T> struct OrderedTypeSetContains<OrderedTypeSet<OrderedType<First, FORDER>,Args...>,T>:public OrderedTypeSetContains<OrderedTypeSet<Args...>,T>{ };
+    template <typename ... Args,class T,int ORDER> struct OrderedTypeSetContains<OrderedTypeSet<OrderedType<T,ORDER>,Args...>,T>:public std::true_type{ };
+    template <class T> struct OrderedTypeSetContains<OrderedTypeSet<>,T>:public std::false_type{ };
+    
+    template <typename ... Args> class AddToOrderedTypeSet;
+    template <typename ... Args,class T,int ORDER> class AddToOrderedTypeSet<OrderedTypeSet<Args...>,OrderedType<T,ORDER>>{
+    public:
+      using Type = typename AddToOrderedTypeSet<OrderedTypeSet<Args...>,OrderedType<T,ORDER>,Before<>>::Type;
     };
     
-    template <class A,class B> struct JoinTypeLists;
-    template <typename ... ArgsA,typename ... ArgsB> struct JoinTypeLists<TypeList<ArgsA...>,TypeList<ArgsB...>>{ using Type = typename PrependToTypeList<TypeList<ArgsA...>,ArgsB...>::Type; };
+    template <typename ... Args,typename ... BArgs,class FT,int FORDER,class T,int ORDER> class AddToOrderedTypeSet<OrderedTypeSet<OrderedType<FT,FORDER>,Args...>,OrderedType<T,ORDER>,Before<BArgs...>>{
+      static const bool insert_before = ORDER < FORDER;
+      using Contained = OrderedTypeSetContains<OrderedTypeSet<Args...>,T>;
+      
+      using IfContained = OrderedTypeSet<BArgs...,OrderedType<FT,FORDER>,Args...> ;
+      using IfNotContained = OrderedTypeSet<BArgs...,OrderedType<T,ORDER>,OrderedType<FT,FORDER>,Args...> ;
+      
+      using If = typename std::conditional<Contained::value,IfContained,IfNotContained>::type;
+      using Else = typename AddToOrderedTypeSet<OrderedTypeSet<Args...>,OrderedType<T,ORDER>,Before<BArgs...,OrderedType<FT,FORDER>>>::Type;
+    public:
+      using Type = typename std::conditional<insert_before,If,Else>::type;
+    };
+    
+    template <typename ... Args,typename ... BArgs,int FORDER,class T,int ORDER> class AddToOrderedTypeSet<OrderedTypeSet<OrderedType<T,FORDER>,Args...>,OrderedType<T,ORDER>,Before<BArgs...>>{
+      static const bool insert_before = ORDER < FORDER;
+      using If = OrderedTypeSet<BArgs...,OrderedType<T,ORDER>,Args...> ;
+      using Else = typename AddToOrderedTypeSet<OrderedTypeSet<Args...>,OrderedType<T,ORDER>,Before<BArgs...>>::Type;
+    public:
+      using Type = typename std::conditional<insert_before,If,Else>::type;
+    };
+    
+    template <typename ... BArgs,class T,int ORDER> class AddToOrderedTypeSet<OrderedTypeSet<>,OrderedType<T,ORDER>,Before<BArgs...>>{
+    public:
+      using Type = OrderedTypeSet<BArgs...,OrderedType<T, ORDER>>;
+    };
+    
+    template <class A,class B> struct JoinOrderedTypeSets;
+    template <typename ... ArgsA,class ArgsB> struct JoinOrderedTypeSets<OrderedTypeSet<ArgsA...>,OrderedTypeSet<ArgsB>>{
+      using Type = typename AddToOrderedTypeSet<OrderedTypeSet<ArgsA...>,ArgsB>::Type;
+    };
+    
+    template <typename ... ArgsA,class First,typename ... ArgsB> struct JoinOrderedTypeSets<OrderedTypeSet<ArgsA...>,OrderedTypeSet<First,ArgsB...>>{
+      using Type = typename JoinOrderedTypeSets< typename AddToOrderedTypeSet<OrderedTypeSet<ArgsA...>,First>::Type, OrderedTypeSet<ArgsB...> >::Type;
+    };
+    
+    template <typename ... ArgsA> struct JoinOrderedTypeSets<OrderedTypeSet<ArgsA...>,OrderedTypeSet<>>{
+      using Type = OrderedTypeSet<ArgsA...>;
+    };
     
     template<typename T> struct to_void { typedef void type; };
     
     template <typename ... Args> struct ExtractBaseTypes;
     
-    template <typename T, typename = void> struct AllBaseTypesOfSingleType{ using Type = TypeList<>; };
+    template <typename T, typename = void> struct AllBaseTypesOfSingleType{ using Type = OrderedTypeSet<>; };
     template <typename T> struct AllBaseTypesOfSingleType <T, typename to_void<typename T::VisitableBaseTypes>::type>{ using Type = typename ExtractBaseTypes<typename T::VisitableBaseTypes>::Type; };
     
     template <typename ... Args> struct AllBaseTypes;
     template <class First,typename ... Args> struct AllBaseTypes<First,Args...>{
-      using Type = typename JoinTypeLists<typename AllBaseTypes<First>::Type, typename AllBaseTypes<Args...>::Type>::Type;
+      using Type = typename JoinOrderedTypeSets<typename AllBaseTypes<First>::Type, typename AllBaseTypes<Args...>::Type>::Type;
     };
     template <class T> struct AllBaseTypes<T>{ using Type = typename AllBaseTypesOfSingleType<T>::Type; };
     
-    template <> struct ExtractBaseTypes<TypeList<>>{ using Type = TypeList<>; };
-    template <class First,typename ... Args> struct ExtractBaseTypes<TypeList<First,Args...>>{
-      using TypeOfFirst = typename PrependToTypeList< typename AllBaseTypes<First>::Type, First >::Type;
-      using Type = typename JoinTypeLists<TypeOfFirst,typename ExtractBaseTypes<TypeList<Args...>>::Type>::Type;
+    template <> struct ExtractBaseTypes<OrderedTypeSet<>>{ using Type = OrderedTypeSet<>; };
+    template <class First,typename ... Args> struct ExtractBaseTypes<OrderedTypeSet<First,Args...>>{
+      using TypeOfFirst = typename AddToOrderedTypeSet< typename AllBaseTypes<First>::Type, First >::Type;
+      using Type = typename JoinOrderedTypeSets<TypeOfFirst,typename ExtractBaseTypes<OrderedTypeSet<Args...>>::Type>::Type;
     };
     
-    template <typename Stream,typename ... Args> void operator<<(Stream &stream,TypeList<Args...>){
-      stream << '{';
-      lars::dummy_function(print_type_list_type(stream,TypeList<Args>())...);
-      stream << '}';
+    template <class Stream,class T,int ORDER> Stream &operator<<(Stream &stream,OrderedType<T,ORDER>){
+      stream << '(' << lars::demangle(typeid(T).name()) << ',' << ORDER << ')';
+      return stream;
     }
     
-    template <typename Stream,class T> int print_type_list_type(Stream &stream,TypeList<T>){
-      stream << typeid(T).name() << ", ";
-      return 0;
+    template <class Stream,typename ... Args> Stream &operator<<(Stream &stream,OrderedTypeSet<Args...>){
+      stream << '{';
+      auto print_element = [&](auto arg){ stream << arg; return 0; };
+      lars::dummy_function(print_element(Args())...);
+      stream << '}';
+      return stream;
     }
     
   }
@@ -223,7 +278,7 @@ namespace lars{
     
   };
   
-  template <class T,class ... Bases> class Visitable<T,WithVisitableBaseClass<Bases...>>:public virtual Bases...,public virtual VisitableBase{
+  template <class T,class ... Bases,class OrderedBases> class Visitable<T,WithVisitableBaseClass<Bases...>,OrderedBases>:public virtual Bases...,public virtual VisitableBase{
   private:
     
     struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
@@ -274,7 +329,7 @@ namespace lars{
     
   public:
     
-    using VisitableBaseTypes = visitor_helper::TypeList<Bases...>;
+    using VisitableBaseTypes = OrderedBases;
     
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
@@ -292,15 +347,20 @@ namespace lars{
   };
   
   template <typename ... Args> struct ToWithVisitableBaseClass;
-  template <typename ... Args> struct ToWithVisitableBaseClass<visitor_helper::TypeList<Args...>>{
-    using Type = WithVisitableBaseClass<Args...>;
+  template <typename ... Args> struct ToWithVisitableBaseClass<visitor_helper::OrderedTypeSet<Args...>>{
+    using Type = WithVisitableBaseClass<typename Args::Type ...>;
   };
+  
+#pragma mark -
+#pragma mark Derived Visitable
   
   template <class T,class B> class DerivedVisitable;
   template <class T,typename ... Args> class DerivedVisitable<T,WithVisitableBaseClass<Args...>>{
+    using AllBaseTypes = typename visitor_helper::AllBaseTypes<Args...>::Type;
+    static const int current_order = visitor_helper::LowestOrderInOrderedTypeSet<AllBaseTypes>::value-1;
   public:
-    using BaseTypeList = typename visitor_helper::PrependToTypeList<typename visitor_helper::AllBaseTypes<Args...>::Type,Args...>::Type;
-    using Type = Visitable<T, typename ToWithVisitableBaseClass<BaseTypeList>::Type >;
+    using BaseTypeList = typename visitor_helper::JoinOrderedTypeSets<AllBaseTypes, visitor_helper::OrderedTypeSet<visitor_helper::OrderedType<Args,current_order>...> >::Type;
+    using Type = Visitable<T, typename ToWithVisitableBaseClass<BaseTypeList>::Type, BaseTypeList>;
   };
   
 #define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
