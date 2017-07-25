@@ -1,14 +1,26 @@
 
 #define LARS_VISITOR_NO_DYNAMIC_CAST
+//#define LARS_VISITOR_DEMANGLE_NAMES
 
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
 #include <unordered_map>
 #endif
 
+#ifdef LARS_VISITOR_DEMANGLE_NAMES
+#include <lars/demangle.h>
+#else
+namespace lars{
+  namespace{
+    inline const char * demangle(const char *name){
+      return name;
+    }
+  }
+}
+#endif
+
 #include <typeinfo>
 #include <exception>
 
-#include <lars/demangle.h>
 #include <lars/dummy.h>
 
 // #define VISITOR_DEBUG
@@ -130,6 +142,7 @@ namespace lars{
   }
   
   
+  template <typename ... Args> class WithBaseClass{};
   template <typename ... Args> class WithVisitableBaseClass{};
   template <typename ... Args> class WithStaticVisitor{};
   
@@ -278,7 +291,7 @@ namespace lars{
     
   };
   
-  template <class T,class ... Bases,class OrderedBases> class Visitable<T,WithVisitableBaseClass<Bases...>,OrderedBases>:public virtual Bases...,public virtual VisitableBase{
+  template <class ... Bases,class ... VisitableBases,class OrderedBases> class Visitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>,OrderedBases>:public virtual VisitableBase,public virtual Bases...{
   private:
     
     struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
@@ -287,7 +300,7 @@ namespace lars{
       VISITOR_LOG("try to accept: " << typeid(Current).name());
       if(auto casted = visitor.as_visitor_for<Current>()){
         VISITOR_LOG("Success!");
-        casted->visit(static_cast<T &>(*this));
+        casted->visit(static_cast<Current &>(*this));
       }
       else{
         throw IncompatibleVisitorException();
@@ -309,7 +322,7 @@ namespace lars{
       VISITOR_LOG("try to accept: " << typeid(Current).name());
       if(auto casted = visitor.as_visitor_for<Current>()){
         VISITOR_LOG("Success!");
-        casted->visit(static_cast<const T &>(*this));
+        casted->visit(static_cast<const Current &>(*this));
       }
       else{
         throw IncompatibleVisitorException();
@@ -335,11 +348,11 @@ namespace lars{
 #pragma clang diagnostic ignored "-Woverloaded-virtual"
 
     void accept(VisitorBase &visitor)override{
-      try_to_accept<T, Bases...>(visitor);
+      try_to_accept<VisitableBases...>(visitor);
     }
     
     void accept(ConstVisitorBase &visitor)const override{
-      try_to_accept<T, Bases...>(visitor);
+      try_to_accept<VisitableBases...>(visitor);
     }
     
 #pragma clang diagnostic pop
@@ -354,20 +367,33 @@ namespace lars{
 #pragma mark -
 #pragma mark Derived Visitable
   
-  template <class T,class B> class DerivedVisitable;
-  template <class T,typename ... Args> class DerivedVisitable<T,WithVisitableBaseClass<Args...>>{
-    using AllBaseTypes = typename visitor_helper::AllBaseTypes<Args...>::Type;
-    static const int current_order = visitor_helper::LowestOrderInOrderedTypeSet<AllBaseTypes>::value-1;
+#define LARS_REMOVE_VISITABLE_ACCEPT_METHODS() void accept(lars::VisitorBase&)override = 0; void accept(lars::ConstVisitorBase&)const override = 0
+  
+  template <typename ... Args> class DerivedVisitable;
+  
+  template <typename ... Bases,typename ... VisitableBases> class DerivedVisitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>>{
+    using AllBaseTypes = typename visitor_helper::AllBaseTypes<VisitableBases...>::Type;
+    static const int current_order = visitor_helper::LowestOrderInOrderedTypeSet<AllBaseTypes>::value;
   public:
-    using BaseTypeList = typename visitor_helper::JoinOrderedTypeSets<AllBaseTypes, visitor_helper::OrderedTypeSet<visitor_helper::OrderedType<Args,current_order>...> >::Type;
-    using Type = Visitable<T, typename ToWithVisitableBaseClass<BaseTypeList>::Type, BaseTypeList>;
+    using BaseTypeList = typename visitor_helper::JoinOrderedTypeSets<AllBaseTypes, visitor_helper::OrderedTypeSet<visitor_helper::OrderedType<VisitableBases,current_order>...> >::Type;
+    using Type = Visitable<WithBaseClass<Bases...> , typename ToWithVisitableBaseClass<BaseTypeList>::Type, BaseTypeList>;
   };
+  
+  template <class T,typename ... Bases,typename ... VisitableBases> class DerivedVisitable<T,WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>>{
+    using AllBaseTypes = typename visitor_helper::AllBaseTypes<VisitableBases...>::Type;
+    static const int current_order = visitor_helper::LowestOrderInOrderedTypeSet<AllBaseTypes>::value;
+  public:
+    using BaseTypeList = typename visitor_helper::JoinOrderedTypeSets<AllBaseTypes, visitor_helper::OrderedTypeSet<visitor_helper::OrderedType<T,current_order-1>,visitor_helper::OrderedType<VisitableBases,current_order>...> >::Type;
+    using Type = Visitable<WithBaseClass<Bases...> , typename ToWithVisitableBaseClass<BaseTypeList>::Type, BaseTypeList>;
+  };
+  
+  template <class T,typename ... Bases> class DerivedVisitable<T,WithVisitableBaseClass<Bases...>>:public DerivedVisitable<T,WithBaseClass<Bases...>,WithVisitableBaseClass<Bases...>>{  };
+  template <typename ... Bases> class DerivedVisitable<WithVisitableBaseClass<Bases...>>:public DerivedVisitable<WithBaseClass<Bases...>,WithVisitableBaseClass<Bases...>>{  };
   
 #define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
 #define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
 #define LARS_MAKE_STATIC_VISITABLE_AND_CONST_VISITABLE(VISITOR) LARS_MAKE_STATIC_VISITABLE(VISITOR) LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR::ConstVisitor)
   
-   
   template <typename ... Args> class StaticVisitor;
   
   template <class First,typename ... Rest> class StaticVisitor<First,Rest...>:public StaticVisitor<Rest...>{
