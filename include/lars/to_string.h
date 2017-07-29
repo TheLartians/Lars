@@ -20,13 +20,13 @@ namespace lars {
   }
   
   template <typename T> T from_wstring(const std::wstring &string){
-    T value;
+    T value = T();
     std::wistringstream(string) >> std::boolalpha >> value;
     return value;
   }
   
   template <typename T> T from_string(const std::string &string){
-    T value;
+    T value = T();
     std::istringstream(string) >> std::boolalpha >> value;
     return value;
   }

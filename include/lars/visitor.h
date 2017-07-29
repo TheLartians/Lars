@@ -399,6 +399,12 @@ namespace lars{
   
 #define LARS_REMOVE_VISITABLE_ACCEPT_METHODS() void accept(lars::VisitorBase&)override = 0; void accept(lars::ConstVisitorBase&)const override = 0; void accept(lars::RecursiveVisitorBase&)override = 0; void accept(lars::RecursiveConstVisitorBase&)const override = 0
   
+#define LARS_DEFINE_FORWARDED_VISITABLE_ACCEPT_METHODS(BASE) \
+  void accept(::lars::VisitorBase &visitor)override{ BASE::accept(visitor); }\
+  void accept(::lars::ConstVisitorBase &visitor)const override{ BASE::accept(visitor); }\
+  void accept(::lars::RecursiveVisitorBase &visitor)override{ BASE::accept(visitor); }\
+  void accept(::lars::RecursiveConstVisitorBase &visitor)const override{ BASE::accept(visitor); }
+  
   template <typename ... Args> class DerivedVisitable;
   
   template <typename ... Bases,typename ... VisitableBases> class DerivedVisitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>>{

@@ -64,7 +64,14 @@ namespace lars {
       
         const_iterator begin()const{ return const_iterator(this,0); }
         const_iterator end()const{ return const_iterator(this,4); }
-        
+      
+      Rectangle operator+(const Vector &v)const  { return Rectangle(center() + v,extent()[0],extent()[1]); }
+      Rectangle operator*(const Scalar &v)const  { return Rectangle(center() * v,extent()[0] * v,extent()[1] * v); }
+      Rectangle operator*(const Vector &v)const  { return Rectangle(center().as_array() * v,extent()[0].as_array() * v,extent()[1].as_array() * v); }
+      Rectangle &operator+=(const Vector &v){ center() += v; return *this; }
+      Rectangle &operator*=(const Scalar &v){ center() *= v; extent()[0]*=v; extent()[1]*=v; return *this; }
+      Rectangle &operator*=(const Vector &v){ center().as_array() *= v; extent()[0].as_array()*=v; extent()[1].as_array()*=v; return *this; }
+
         template <class F> void for_all_edges(F f)const{
             f(upper_left());
             f(upper_right());
