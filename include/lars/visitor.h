@@ -1,4 +1,6 @@
 
+#pragma once
+
 #define LARS_VISITOR_NO_DYNAMIC_CAST
 //#define LARS_VISITOR_DEMANGLE_NAMES
 
