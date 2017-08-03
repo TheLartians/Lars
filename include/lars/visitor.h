@@ -468,6 +468,15 @@ namespace lars{
   
   template <class Visitor> class RemoveVisitors<Visitor>{};
 
+  template <class Base,class T> T * visitor_cast(Base *base){
+    struct CastVisitor:public lars::Visitor<Base,T>{
+      T * result = nullptr;
+      void visit(T & t) { result = &t; }
+      void visit(Base &){ }
+    } visitor;
+    base->accept(visitor);
+    return visitor.result;
+  }
 
   
 }
