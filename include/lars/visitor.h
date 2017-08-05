@@ -468,15 +468,23 @@ namespace lars{
   
   template <class Visitor> class RemoveVisitors<Visitor>{};
 
-  template <class Base,class T> T * visitor_cast(Base *base){
-    struct CastVisitor:public lars::Visitor<Base,T>{
+  template <class T> T * visitor_cast(VisitableBase *base){
+    struct CastVisitor:public lars::RecursiveVisitor<T>{
       T * result = nullptr;
-      void visit(T & t) { result = &t; }
-      void visit(Base &){ }
+      bool visit(T & t) override { result = &t; return false; }
     } visitor;
     base->accept(visitor);
     return visitor.result;
   }
-
+  
+  template <class T> const T * visitor_cast(const VisitableBase *base){
+    struct CastVisitor:public lars::RecursiveConstVisitor<T>{
+      const T * result = nullptr;
+      bool visit(const T & t) override { result = &t; return false; }
+    } visitor;
+    base->accept(visitor);
+    return visitor.result;
+  }
+  
   
 }
