@@ -486,5 +486,25 @@ namespace lars{
     return visitor.result;
   }
   
+  template <class T> std::shared_ptr<T> visitor_cast(const std::shared_ptr<VisitableBase> &base){
+    struct CastVisitor:public lars::RecursiveVisitor<T>{
+      T * result = nullptr;
+      bool visit(T & t) override { result = &t; return false; }
+    } visitor;
+    base->accept(visitor);
+    if(visitor.result) return std::shared_ptr<T>(base,visitor.result);
+    return std::shared_ptr<T>();
+  }
+  
+  template <class T> std::shared_ptr<const T> visitor_cast(const std::shared_ptr<const VisitableBase> &base){
+    struct CastVisitor:public lars::RecursiveConstVisitor<T>{
+      const T * result = nullptr;
+      bool visit(const T & t) override { result = &t; return false; }
+    } visitor;
+    base->accept(visitor);
+    if(visitor.result) return std::shared_ptr<T>(base,visitor.result);
+    return std::shared_ptr<T>();
+  }
+  
   
 }

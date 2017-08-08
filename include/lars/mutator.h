@@ -10,6 +10,8 @@ namespace lars{
   
 #define MUTATOR_MEMBER_VISIBILITY(TYPE,NAME,DEFAULT,CODE,GETTER_VISIBILITY,SETTER_VISIBILITY) private: TYPE _ ## NAME DEFAULT; GETTER_VISIBILITY TYPE const &NAME()const{ return _ ## NAME; } SETTER_VISIBILITY template <typename ... Args> auto &set_ ## NAME(const Args & ... args){ _ ## NAME = ::lars::mutator_helper::initialize<TYPE>(args...); CODE; return *this; }
 
+#define MUTABLE_MUTATOR_MEMBER_VISIBILITY(TYPE,NAME,DEFAULT,CODE,GETTER_VISIBILITY,SETTER_VISIBILITY) private: mutable TYPE _ ## NAME DEFAULT; GETTER_VISIBILITY TYPE const &NAME()const{ return _ ## NAME; } SETTER_VISIBILITY template <typename ... Args> auto &set_ ## NAME(const Args & ... args)const{ _ ## NAME = ::lars::mutator_helper::initialize<TYPE>(args...); CODE; return *this; }
+
 #define REFERENCE_MUTATOR_MEMBER_VISIBILITY(TYPE,NAME,DEFAULT,CODE,GETTER_VISIBILITY,SETTER_VISIBILITY) private: TYPE * _ ## NAME DEFAULT; GETTER_VISIBILITY TYPE &NAME()const{ return * _ ## NAME; } SETTER_VISIBILITY auto &set_ ## NAME(TYPE &t){ _ ## NAME = &t; CODE; return *this; }
 
 
@@ -20,3 +22,5 @@ namespace lars{
 #define MUTATOR_MEMBER(TYPE,NAME,DEFAULT,CODE) MUTATOR_MEMBER_PUBLIC(TYPE,NAME,DEFAULT,CODE);
 
 #define REFERENCE_MUTATOR_MEMBER(TYPE,NAME,DEFAULT,CODE) REFERENCE_MUTATOR_MEMBER_VISIBILITY(TYPE,NAME,DEFAULT,CODE,public:,public:);
+
+#define MUTABLE_MUTATOR_MEMBER(TYPE,NAME,DEFAULT,CODE) MUTABLE_MUTATOR_MEMBER_VISIBILITY(TYPE,NAME,DEFAULT,CODE,public:,public:);
