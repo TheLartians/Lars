@@ -12,13 +12,13 @@
 #endif
 
 #include <exception>
-
-#include <lars/dummy.h>
+#include <type_traits>
 
 #ifdef VISITOR_DEBUG
 #include <iostream>
 #include <typeinfo>
 #include <lars/demangle.h>
+#include <lars/dummy.h>
 #define VISITOR_LOG(X) { std::cout << "visitor: " << this << ": " << X << std::endl; }
 #else
 #define VISITOR_LOG(X)
@@ -203,7 +203,7 @@ namespace lars{
     }
 #else
     void * try_to_cast_to(unsigned requested){
-      if(lars::TypeIndexContext<>::type_index<Visiting> == requested){ return reinterpret_cast<void*>(this); }
+      if(get_type_index<Visiting>() == requested){ return reinterpret_cast<void*>(this); }
       return nullptr;
     }
 #endif
@@ -246,7 +246,7 @@ namespace lars{
     virtual void * as_visitor_for(unsigned) = 0;
   public:
     template <class T> Visitor<T> * as_visitor_for(){
-      return reinterpret_cast<Visitor<T> *>(as_visitor_for(lars::TypeIndexContext<>::type_index<T>));
+      return reinterpret_cast<Visitor<T> *>(as_visitor_for(get_type_index<T>()));
     }
 #endif
 #else
