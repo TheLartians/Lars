@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <limits>
 #include <cmath>
+#include <iterator>
 
 namespace lars {
     
@@ -13,9 +14,12 @@ namespace lars {
         using Vector = V;
         using Scalar = typename Vector::Scalar;
         
-        struct const_iterator{
-            const Rectangle * parent;
-            unsigned char idx;
+      class const_iterator:public std::iterator<std::forward_iterator_tag, Vector>{
+      private:
+        const Rectangle * parent;
+        unsigned char idx;
+        friend Rectangle;
+      public:
             const_iterator(const Rectangle * p,unsigned char i):parent(p),idx(i){}
             void operator++(){ idx++; }
             Vector operator*()const{
@@ -60,7 +64,14 @@ namespace lars {
       
         const_iterator begin()const{ return const_iterator(this,0); }
         const_iterator end()const{ return const_iterator(this,4); }
-        
+      
+      Rectangle operator+(const Vector &v)const  { return Rectangle(center() + v,extent()[0],extent()[1]); }
+      Rectangle operator*(const Scalar &v)const  { return Rectangle(center() * v,extent()[0] * v,extent()[1] * v); }
+      Rectangle operator*(const Vector &v)const  { return Rectangle(center().as_array() * v,extent()[0].as_array() * v,extent()[1].as_array() * v); }
+      Rectangle &operator+=(const Vector &v){ center() += v; return *this; }
+      Rectangle &operator*=(const Scalar &v){ center() *= v; extent()[0]*=v; extent()[1]*=v; return *this; }
+      Rectangle &operator*=(const Vector &v){ center().as_array() *= v; extent()[0].as_array()*=v; extent()[1].as_array()*=v; return *this; }
+
         template <class F> void for_all_edges(F f)const{
             f(upper_left());
             f(upper_right());
@@ -76,19 +87,22 @@ namespace lars {
         using Vector = V;
         using Scalar = typename Vector::Scalar;
         
-        struct const_iterator{
-            const AlignedRectangle & parent;
-            unsigned char idx;
-            const_iterator(const AlignedRectangle & p,unsigned char i):parent(p),idx(i){}
-            const_iterator operator++(){ return const_iterator(parent,idx++); }
-            Vector operator*()const{
-                if(idx == 0) return parent.lower_left();
-                if(idx == 1) return parent.lower_right();
-                if(idx == 2) return parent.upper_right();
-                if(idx == 3) return parent.upper_left();
-                throw std::runtime_error("iterator overflow");
-            }
-            bool operator!=(const const_iterator &other)const{ return other.idx != idx || other.parent != parent; }
+      class const_iterator:public std::iterator<std::forward_iterator_tag, Vector>{
+      private:
+        friend AlignedRectangle;
+        const AlignedRectangle & parent;
+        unsigned char idx;
+      public:
+          const_iterator(const AlignedRectangle & p,unsigned char i):parent(p),idx(i){}
+          const_iterator operator++(){ return const_iterator(parent,idx++); }
+          Vector operator*()const{
+              if(idx == 0) return parent.lower_left();
+              if(idx == 1) return parent.lower_right();
+              if(idx == 2) return parent.upper_right();
+              if(idx == 3) return parent.upper_left();
+              throw std::runtime_error("iterator overflow");
+          }
+          bool operator!=(const const_iterator &other)const{ return other.idx != idx || other.parent != parent; }
         };
         
     private:

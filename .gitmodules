@@ -10,3 +10,6 @@
 [submodule "modules/Parser"]
 	path = modules/Parser
 	url = https://github.com/TheLartians/Parser.git
+[submodule "modules/Expresso"]
+	path = modules/Expresso
+	url = https://github.com/TheLartians/Expresso2.git
