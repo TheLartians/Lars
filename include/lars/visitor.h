@@ -1,38 +1,28 @@
 
 #pragma once
 
+// #define VISITOR_DEBUG
 #define LARS_VISITOR_NO_DYNAMIC_CAST
-//#define LARS_VISITOR_DEMANGLE_NAMES
+#define LARS_VISITOR_NO_TYPEID
 
-#ifdef LARS_VISITOR_NO_DYNAMIC_CAST
-#include <unordered_map>
-#endif
-
-#ifdef LARS_VISITOR_DEMANGLE_NAMES
-#include <lars/demangle.h>
-#else
-namespace lars{
-  namespace{
-    inline const char * demangle(const char *name){
-      return name;
-    }
-  }
-}
-#endif
-
+#ifndef LARS_VISITOR_NO_TYPEID
 #include <typeinfo>
+#else
+#include <lars/type_index.h>
+#endif
+
 #include <exception>
 
 #include <lars/dummy.h>
 
-// #define VISITOR_DEBUG
 #ifdef VISITOR_DEBUG
 #include <iostream>
+#include <typeinfo>
+#include <lars/demangle.h>
 #define VISITOR_LOG(X) { std::cout << "visitor: " << this << ": " << X << std::endl; }
 #else
 #define VISITOR_LOG(X)
 #endif
-
 
 namespace lars{
   
@@ -132,6 +122,7 @@ namespace lars{
       using Type = typename JoinOrderedTypeSets<TypeOfFirst,typename ExtractBaseTypes<OrderedTypeSet<Args...>>::Type>::Type;
     };
     
+#ifdef VISITOR_DEBUG
     template <class Stream,class T,int ORDER> Stream &operator<<(Stream &stream,OrderedType<T,ORDER>){
       stream << '(' << lars::demangle(typeid(T).name()) << ',' << ORDER << ')';
       return stream;
@@ -143,6 +134,7 @@ namespace lars{
       stream << '}';
       return stream;
     }
+#endif
     
   }
   
@@ -172,35 +164,62 @@ namespace lars{
   template <class Base,typename Visiting,typename ... VisitingRest,class Accepted,typename ... AcceptedRest,class Return> class VisitorPrototype<Base,visitor_helper::TypeList<Visiting,VisitingRest...>,visitor_helper::TypeList<Accepted,AcceptedRest...>,Return>:public virtual Base,public VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>,public VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>{
   protected:
     
+#ifndef LARS_VISITOR_NO_TYPEID
     void * try_to_cast_to(const std::type_info &requested){
       auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::try_to_cast_to(requested);
       if(result != nullptr) return result;
       return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::try_to_cast_to(requested);
     }
+#else
+    void * try_to_cast_to(unsigned requested){
+      auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::try_to_cast_to(requested);
+      if(result != nullptr) return result;
+      return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::try_to_cast_to(requested);
+    }
+#endif
     
   public:
     using ConstVisitor = VisitorPrototype<ConstVisitorBase,visitor_helper::TypeList<Visiting,VisitingRest...>,visitor_helper::TypeList<const Visiting &,const VisitingRest &...>,Return>;
     
+#ifndef LARS_VISITOR_NO_TYPEID
     void * as_visitor_for(const std::type_info &requested)override{
       return try_to_cast_to(requested);
     }
+#else
+    void * as_visitor_for(unsigned requested)override{
+      return try_to_cast_to(requested);
+    }
+#endif
     
   };
   
   template <class Base,typename Visiting,class Accepted,class Return> class VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>:public virtual Base{
   protected:
     
+#ifndef LARS_VISITOR_NO_TYPEID
     void * try_to_cast_to(const std::type_info &requested){
       if(typeid(Visiting) == requested){ return reinterpret_cast<void*>(this); }
       return nullptr;
     }
+#else
+    void * try_to_cast_to(unsigned requested){
+      if(lars::TypeIndexContext<>::type_index<Visiting> == requested){ return reinterpret_cast<void*>(this); }
+      return nullptr;
+    }
+#endif
     
   public:
     using ConstVisitor = VisitorPrototype<ConstVisitorBase,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<const Visiting &>,Return>;
     
+#ifndef LARS_VISITOR_NO_TYPEID
     void * as_visitor_for(const std::type_info &requested)override{
       return try_to_cast_to(requested);
     }
+#else
+    void * as_visitor_for(unsigned requested)override{
+      return try_to_cast_to(requested);
+    }
+#endif
     
     virtual Return visit(Accepted) = 0;
   };
@@ -215,12 +234,21 @@ namespace lars{
   
   template <template <typename ... Args> class Visitor> class VisitorBasePrototype{
 #ifdef LARS_VISITOR_NO_DYNAMIC_CAST
+#ifndef LARS_VISITOR_NO_TYPEID
   protected:
     virtual void * as_visitor_for(const std::type_info &) = 0;
   public:
     template <class T> Visitor<T> * as_visitor_for(){
       return reinterpret_cast<Visitor<T> *>(as_visitor_for(typeid(T)));
     }
+#else
+  protected:
+    virtual void * as_visitor_for(unsigned) = 0;
+  public:
+    template <class T> Visitor<T> * as_visitor_for(){
+      return reinterpret_cast<Visitor<T> *>(as_visitor_for(lars::TypeIndexContext<>::type_index<T>));
+    }
+#endif
 #else
   public:
     template <class T> Visitor<T> * as_visitor_for(){
@@ -428,46 +456,9 @@ namespace lars{
   template <class T,typename ... Bases> class DerivedVisitable<T,WithVisitableBaseClass<Bases...>>:public DerivedVisitable<T,WithBaseClass<Bases...>,WithVisitableBaseClass<Bases...>>{  };
   template <typename ... Bases> class DerivedVisitable<WithVisitableBaseClass<Bases...>>:public DerivedVisitable<WithBaseClass<Bases...>,WithVisitableBaseClass<Bases...>>{  };
   
-#define LARS_MAKE_STATIC_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor){ visitor.visit(*this); } _Pragma("clang diagnostic pop")
-#define LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Woverloaded-virtual\"") _Pragma("clang diagnostic ignored \"-Winconsistent-missing-override\"") virtual void static_accept(VISITOR &visitor)const{ visitor.visit(*this); } _Pragma("clang diagnostic pop")
-#define LARS_MAKE_STATIC_VISITABLE_AND_CONST_VISITABLE(VISITOR) LARS_MAKE_STATIC_VISITABLE(VISITOR) LARS_MAKE_STATIC_CONST_VISITABLE(VISITOR::ConstVisitor)
+#pragma mark -
+#pragma mark visitor cast
   
-  template <typename ... Args> class StaticVisitor;
-  
-  template <class First,typename ... Rest> class StaticVisitor<First,Rest...>:public StaticVisitor<Rest...>{
-  public:
-    using ConstVisitor = lars::StaticVisitor<const First,const Rest...>;
-    using StaticVisitor<Rest...>::visit;
-    virtual void visit(First &) = 0;
-  };
-
-  template <> class StaticVisitor<>{
-  protected:
-    static void visit();
-  };
-  
-  template <typename ... Args> class ForwardVisitsTo;
-  
-  template <class Visitor,class Target,class First,typename ... Rest> class ForwardVisitsTo<Visitor,Target,First,Rest...>:public virtual Visitor,public ForwardVisitsTo<Visitor,Target,Rest...>{
-  public:
-    using ConstVisitor = ForwardVisitsTo<typename Visitor::ConstVisitor,const Target,const First,const Rest...>;
-    using Visitor::visit;
-    void visit(First &visitable)override{ visit((Target &)visitable); }
-  };
-
-  template <class Visitor,class Target> class ForwardVisitsTo<Visitor,Target>{};
-  
-  template <typename ... Args> class RemoveVisitors;
-  
-  template <class Visitor,class First,typename ... Rest> class RemoveVisitors<Visitor,First,Rest...>:public virtual Visitor,public RemoveVisitors<Visitor,Rest...>{
-  public:
-    using ConstVisitor = RemoveVisitors<typename Visitor::ConstVisitor,const First,const Rest...>;
-    using Visitor::visit;
-    void visit(First &visitable)override = 0;
-  };
-  
-  template <class Visitor> class RemoveVisitors<Visitor>{};
-
   template <class T> T * visitor_cast(VisitableBase *base){
     struct CastVisitor:public lars::RecursiveVisitor<T>{
       T * result = nullptr;
@@ -485,26 +476,5 @@ namespace lars{
     base->accept(visitor);
     return visitor.result;
   }
-  
-  template <class T> std::shared_ptr<T> visitor_cast(const std::shared_ptr<VisitableBase> &base){
-    struct CastVisitor:public lars::RecursiveVisitor<T>{
-      T * result = nullptr;
-      bool visit(T & t) override { result = &t; return false; }
-    } visitor;
-    base->accept(visitor);
-    if(visitor.result) return std::shared_ptr<T>(base,visitor.result);
-    return std::shared_ptr<T>();
-  }
-  
-  template <class T> std::shared_ptr<const T> visitor_cast(const std::shared_ptr<const VisitableBase> &base){
-    struct CastVisitor:public lars::RecursiveConstVisitor<T>{
-      const T * result = nullptr;
-      bool visit(const T & t) override { result = &t; return false; }
-    } visitor;
-    base->accept(visitor);
-    if(visitor.result) return std::shared_ptr<T>(base,visitor.result);
-    return std::shared_ptr<T>();
-  }
-  
   
 }
