@@ -165,16 +165,16 @@ namespace lars{
   protected:
     
 #ifndef LARS_VISITOR_NO_TYPEID
-    void * try_to_cast_to(const std::type_info &requested){
-      auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::try_to_cast_to(requested);
+    void * cast_to_visitor_for(const std::type_info &requested){
+      auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::cast_to_visitor_for(requested);
       if(result != nullptr) return result;
-      return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::try_to_cast_to(requested);
+      return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::cast_to_visitor_for(requested);
     }
 #else
-    void * try_to_cast_to(unsigned requested){
-      auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::try_to_cast_to(requested);
-      if(result != nullptr) return result;
-      return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::try_to_cast_to(requested);
+    void * cast_to_visitor_for(unsigned type_id){
+      auto result = VisitorPrototype<Base,visitor_helper::TypeList<Visiting>,visitor_helper::TypeList<Accepted>,Return>::cast_to_visitor_for(type_id);
+      if(result) return result;
+      return VisitorPrototype<Base,visitor_helper::TypeList<VisitingRest...>,visitor_helper::TypeList<AcceptedRest...>,Return>::cast_to_visitor_for(type_id);
     }
 #endif
     
@@ -183,11 +183,11 @@ namespace lars{
     
 #ifndef LARS_VISITOR_NO_TYPEID
     void * as_visitor_for(const std::type_info &requested)override{
-      return try_to_cast_to(requested);
+      return cast_to_visitor_for(requested);
     }
 #else
     void * as_visitor_for(unsigned requested)override{
-      return try_to_cast_to(requested);
+      return cast_to_visitor_for(requested);
     }
 #endif
     
@@ -197,12 +197,12 @@ namespace lars{
   protected:
     
 #ifndef LARS_VISITOR_NO_TYPEID
-    void * try_to_cast_to(const std::type_info &requested){
+    void * cast_to_visitor_for(const std::type_info &requested){
       if(typeid(Visiting) == requested){ return reinterpret_cast<void*>(this); }
       return nullptr;
     }
 #else
-    void * try_to_cast_to(unsigned requested){
+    void * cast_to_visitor_for(unsigned requested){
       if(get_type_index<Visiting>() == requested){ return reinterpret_cast<void*>(this); }
       return nullptr;
     }
@@ -213,11 +213,11 @@ namespace lars{
     
 #ifndef LARS_VISITOR_NO_TYPEID
     void * as_visitor_for(const std::type_info &requested)override{
-      return try_to_cast_to(requested);
+      return cast_to_visitor_for(requested);
     }
 #else
     void * as_visitor_for(unsigned requested)override{
-      return try_to_cast_to(requested);
+      return cast_to_visitor_for(requested);
     }
 #endif
     

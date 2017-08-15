@@ -2,7 +2,6 @@
 
 namespace lars{
 
-
   template <class Index = unsigned> struct TypeIndexContext{
     static Index type_count;
     template <class T> struct TypeIndex{ static Index value; };
