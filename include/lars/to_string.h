@@ -12,10 +12,17 @@ namespace lars {
     return stream.str();
   }
 
-  template <typename T> std::wstring to_wstring(T value,int precision = 0 ) {
+  template <typename T> std::wstring to_wstring(const T &value,int precision = 0 ) {
     std::wostringstream stream ;
     if(precision) stream.precision(precision);
     stream << value ;
+    return stream.str() ;
+  }
+
+  template <> inline std::wstring to_wstring<std::string>(const std::string &value,int precision) {
+    std::wostringstream stream ;
+    if(precision) stream.precision(precision);
+    stream << value.c_str() ;
     return stream.str() ;
   }
   
