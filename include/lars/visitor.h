@@ -277,7 +277,10 @@ namespace lars{
 #pragma mark Visitable
   
 #ifndef LARS_VISITOR_NO_EXCEPTIONS
-  struct IncompatibleVisitorException:public std::exception{};
+  struct IncompatibleVisitorException:public std::exception{
+    const char* what() const throw ()override{ return "IncompatibleVisitorException"; }
+  };
+  
 #endif
   
   template <class T> class Visitable<T>:public virtual VisitableBase{
@@ -317,7 +320,7 @@ namespace lars{
     
   };
   
-  template <class ... Bases,class ... VisitableBases,class OrderedBases> class Visitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>,OrderedBases>:public virtual VisitableBase,public virtual Bases...{
+  template <class ... Bases,class ... VisitableBases,class OrderedBases> class alignas(Bases...) Visitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>,OrderedBases>:public virtual VisitableBase,public virtual Bases...{
   private:
     
     struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
