@@ -320,7 +320,7 @@ namespace lars{
     
   };
   
-  template <class ... Bases,class ... VisitableBases,class OrderedBases> class alignas(Bases...) Visitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>,OrderedBases>:public virtual VisitableBase,public virtual Bases...{
+  template <class ... Bases,class ... VisitableBases,class OrderedBases> class alignas(VisitableBase) alignas(Bases...) Visitable<WithBaseClass<Bases...>,WithVisitableBaseClass<VisitableBases...>,OrderedBases>:public virtual VisitableBase,public virtual Bases...{
   private:
     
     struct IncompatibleVisitorException:public lars::IncompatibleVisitorException{};
