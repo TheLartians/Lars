@@ -19,12 +19,12 @@ namespace lars {
     auto us = duration_cast<microseconds>(dur);
     auto ns = duration_cast<nanoseconds>(dur);
     
-    if(h.count() > 1) return lars::to_string(h.count()) + " h";
-    if(m.count() > 1) return lars::to_string(m.count()) + " m";
-    if(s.count() > 1) return lars::to_string(s.count()) + " s";
-    if(ms.count() > 1) return lars::to_string(ms.count()) + " ms";
-    if(us.count() > 1) return lars::to_string(us.count()) + " us";
-    return lars::to_string(ns.count()) + " ns";
+    if(h.count() > 1) return lars::stream_to_string(h.count()) + " h";
+    if(m.count() > 1) return lars::stream_to_string(m.count()) + " m";
+    if(s.count() > 1) return lars::stream_to_string(s.count()) + " s";
+    if(ms.count() > 1) return lars::stream_to_string(ms.count()) + " ms";
+    if(us.count() > 1) return lars::stream_to_string(us.count()) + " us";
+    return lars::stream_to_string(ns.count()) + " ns";
   }
   
   struct TimeItResult{
