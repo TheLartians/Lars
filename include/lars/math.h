@@ -1,6 +1,7 @@
 #pragma once
 
 #include <limits>
+#include <cmath>
 
 namespace lars {
   
@@ -29,7 +30,8 @@ namespace lars {
   }
   
   template <typename T> bool are_approximately_equal(T a, T b, T epsilon = std::numeric_limits<T>::epsilon()){
-    return lars::abs(a - b) <= ( lars::min(lars::abs(a),lars::abs(b)) * epsilon);
+    if(!std::isfinite<T>(a) || !std::isfinite<T>(b)) return a == b;
+    return lars::abs(a - b) <= ( lars::max(lars::abs(a),lars::abs(b)) * epsilon);
   }
 
 }
