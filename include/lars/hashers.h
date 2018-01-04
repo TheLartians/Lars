@@ -35,13 +35,24 @@ namespace lars {
     };
   }
   
-  template <typename ... TT> struct TupleHasher {
+  template <typename ... TT> struct TupleHasher;
+  
+  template <typename ... TT> struct TupleHasher<std::tuple<TT...>> {
     size_t operator()(std::tuple<TT...> const& tt) const{
       size_t seed = 0;
       HashValueImpl<std::tuple<TT...> >::apply(seed, tt);
       return seed;
     }
   };
+  
+  template <typename T,typename ... TT> struct TupleHasher<T,TT...> {
+    size_t operator()(std::tuple<T,TT...> const& tt) const{
+      size_t seed = 0;
+      HashValueImpl<std::tuple<T,TT...> >::apply(seed, tt);
+      return seed;
+    }
+  };
+
   
   struct FloatHasher {
     size_t operator()(const float & f) const{
