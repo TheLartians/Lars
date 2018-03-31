@@ -20,19 +20,15 @@ namespace lars{
   
   template<class T> struct AnyScalarData:public DerivedVisitable<AnyScalarData<T>,WithVisitableBaseClass<AnyScalarBase>>::Type{
     T data;
-    template <typename ... Args> AnyScalarData(Args && ... args){ data = T(args...); }
+    template <typename ... Args> AnyScalarData(Args && ... args):data(T(args...)){ }
   };
   
   class Any{
   private:
-    std::unique_ptr<AnyScalarBase> data;
+    std::shared_ptr<AnyScalarBase> data;
   public:
     using BadAnyCast = lars::IncompatibleVisitorException;
-    
-    Any(){}
-    Any(Any && other){ data = std::move(other.data); }
-    template <class T> Any(T && t){ set<T>(t); }
-    
+        
     template <class T> T &get(){
       struct GetVisitor:public Visitor<AnyScalarData<T>>{
         T * result;
@@ -94,7 +90,7 @@ namespace lars{
   
   template <class T,typename ... Args> Any make_any(Args && ... args){
     Any result;
-    result.set<T>(args...);
+    result.set<T>(std::forward<Args>(args)...);
     return result;
   }
   
@@ -145,7 +141,7 @@ namespace lars{
 
     template <typename ... Args> Any operator()(Args && ... args)const{
       assert(data);
-      std::array<Any, sizeof...(Args)> tmp = {{args ...}};
+      std::array<Any, sizeof...(Args)> tmp = {{make_any< typename std::remove_const<typename std::remove_reference<Args>::type>::type >(std::forward(args)) ...}};
       std::vector<Any> args_vector(std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
       return call(args_vector);
     }
