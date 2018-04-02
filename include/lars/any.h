@@ -20,7 +20,7 @@ namespace lars{
   
   template<class T> struct AnyScalarData:public DerivedVisitable<AnyScalarData<T>,WithVisitableBaseClass<AnyScalarBase>>::Type{
     T data;
-    template <typename ... Args> AnyScalarData(Args && ... args):data(T(args...)){ }
+    template <typename ... Args> AnyScalarData(Args && ... args):data(std::forward<Args>(args)...){ }
   };
   
   class Any{
@@ -112,7 +112,7 @@ namespace lars{
     }
     
     template <class U=R> typename std::enable_if<std::is_void<U>::value,Any>::type call_with_any_arguments(const typename SecondType<Args,Any>::Type & ... args)const{
-      data(args.template get<Args>() ...);
+      data(args.template get< typename std::remove_const<typename std::remove_reference<Args>::type>::type >() ...);
       return Any();
     }
     
