@@ -68,13 +68,13 @@ namespace lars{
     }
 
     template <class T = double> T get_numeric()const{
-      struct GetVisitor:public ConstVisitor<AnyScalarData<float>,AnyScalarData<double>,AnyScalarData<unsigned>,AnyScalarData<int>,AnyScalarData<size_t>>{
+      struct GetVisitor:public ConstVisitor<AnyScalarData<float>,AnyScalarData<double>,AnyScalarData<unsigned>,AnyScalarData<int>,AnyScalarData<void*>>{
         T result;
         void visit(const AnyScalarData<float> &data){ result = data; }
         void visit(const AnyScalarData<double> &data){ result = data; }
         void visit(const AnyScalarData<int> &data){ result = data; }
         void visit(const AnyScalarData<unsigned> &data){ result = data; }
-        void visit(const AnyScalarData<size_t> &data){ result = data; }
+        void visit(const AnyScalarData<void*> &data){ result = data; }
       } visitor;
       accept_visitor(visitor);
       return visitor.result;
