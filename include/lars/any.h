@@ -97,6 +97,7 @@ namespace lars{
   class AnyFunctionBase{
   public:
     virtual Any call_with_any_arguments(const std::vector<Any> &args)const = 0;
+    virtual ~AnyFunctionBase(){}
   };
   
   template <class R,typename ... Args> class AnyFunctionData:public AnyFunctionBase{
@@ -125,6 +126,8 @@ namespace lars{
       return call_with_arguments_and_indices(args,lars::IndexTupleRange<sizeof...(Args)>());
     }
     
+    virtual ~AnyFunctionData(){}
+    
   };
   
   class AnyFunction{
@@ -146,6 +149,7 @@ namespace lars{
       return call(args_vector);
     }
 
+    virtual ~AnyFunction(){}
   };
   
   template <class R,typename ... Args> AnyFunction make_any_function(const std::function<R(Args...)> &f){
