@@ -3,6 +3,8 @@
 #include <lars/visitor.h>
 #include <lars/index_tuple.h>
 #include <lars/make_function.h>
+#include <lars/mutator.h>
+#include <lars/type_index.h>
 
 #include <vector>
 #include <array>
@@ -98,6 +100,10 @@ namespace lars{
   public:
     virtual Any call_with_any_arguments(const std::vector<Any> &args)const = 0;
     virtual ~AnyFunctionBase(){}
+    
+    virtual unsigned argument_count()const = 0;
+    virtual TypeIndex return_type()const = 0;
+    virtual TypeIndex argument_type(unsigned)const = 0;
   };
   
   template <class R,typename ... Args> class AnyFunctionData:public AnyFunctionBase{
@@ -126,28 +132,41 @@ namespace lars{
       return call_with_arguments_and_indices(args,lars::IndexTupleRange<sizeof...(Args)>());
     }
     
+    unsigned argument_count()const override{ return sizeof...(Args); }
+    
+    TypeIndex return_type()const override{ return get_type_index<R>(); }
+    
+    TypeIndex argument_type(unsigned i)const override{
+      std::array<TypeIndex,sizeof...(Args)> types = {{ get_type_index<typename std::remove_const<typename std::remove_reference<Args>::type>::type>()... }};
+      return types[i];
+    }
+    
     virtual ~AnyFunctionData(){}
     
   };
   
   class AnyFunction{
   private:
-    std::unique_ptr<AnyFunctionBase> data;
+    std::shared_ptr<AnyFunctionBase> data;
     template <class R,typename ... Args> void _set(const std::function<R(Args...)> &f){ data = std::make_unique<AnyFunctionData<R,Args...>>(f); }
   public:
+    
     AnyFunction(){}
     template <class T> AnyFunction(T && f){ set(f); }
-    
     template <class F> void set(F && f){ _set(make_function(f)); }
     
     Any call(const std::vector<Any> &args)const{ assert(data); return data->call_with_any_arguments(args); }
 
     template <typename ... Args> Any operator()(Args && ... args)const{
       assert(data);
-      std::array<Any, sizeof...(Args)> tmp = {{make_any< typename std::remove_const<typename std::remove_reference<Args>::type>::type >(std::forward(args)) ...}};
+      std::array<Any, sizeof...(Args)> tmp = {{make_any< typename std::remove_const<typename std::remove_reference<Args>::type>::type >(std::forward<Args>(args)) ...}};
       std::vector<Any> args_vector(std::make_move_iterator(tmp.begin()), std::make_move_iterator(tmp.end()));
       return call(args_vector);
     }
+    
+    unsigned argument_count()const{ return data->argument_count(); }
+    TypeIndex return_type()const{ return data->return_type(); }
+    TypeIndex argument_type(unsigned i)const{ return data->argument_type(i); }
 
     virtual ~AnyFunction(){}
   };

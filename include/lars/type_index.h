@@ -1,5 +1,23 @@
 #pragma once
 
+#define CTTI
+
+#ifdef CTTI
+
+#include <ctti/type_id.hpp>
+
+namespace lars{
+  
+  using TypeIndex = ctti::type_index;
+  
+  template <class T> constexpr TypeIndex get_type_index(){
+    return ctti::type_id<T>();
+  }
+  
+}
+
+#else
+
 namespace lars{
   
   using TypeIndex = unsigned;
@@ -18,3 +36,4 @@ namespace lars{
 
 }
 
+#endif
