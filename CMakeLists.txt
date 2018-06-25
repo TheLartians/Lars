@@ -28,7 +28,6 @@ set(Lars_INCLUDE_DIRS ${lars_include_dirs} CACHE INTERNAL "")
 set(Lars_LIBRARIES ${lars_libraries} CACHE INTERNAL "")
 
 IF(LARS_BUILD_EXAMPLES)
-  set(CMAKE_CXX_STANDARD 11)
   file( GLOB example_sources ${CMAKE_CURRENT_SOURCE_DIR}/examples/*.cpp )
   foreach( examplesourcefile ${example_sources} )
     get_filename_component(filename ${examplesourcefile} NAME)
