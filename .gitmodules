@@ -13,3 +13,6 @@
 [submodule "modules/Expresso"]
 	path = modules/Expresso
 	url = https://github.com/TheLartians/Expresso2.git
+[submodule "modules/Glue"]
+	path = modules/Glue
+	url = https://github.com/TheLartians/Glue.git
