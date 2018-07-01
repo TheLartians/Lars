@@ -15,7 +15,11 @@ list(APPEND lars_include_dirs "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 # ---- Add modules ----
 
-SET(modules Visitor Event Generator NDArray Parser Expresso Glue )
+if(LARS_MODULES)
+  SET(modules ${LARS_MODULES})
+else()
+  SET(modules Visitor Event Generator NDArray Parser Expresso Glue )
+endif()
 
 FOREACH(module ${modules})
   ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/modules/${module})
