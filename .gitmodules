@@ -16,3 +16,7 @@
 [submodule "modules/Glue"]
 	path = modules/Glue
 	url = https://github.com/TheLartians/Glue.git
+[submodule "modules/Visitor"]
+	path = modules/Visitor
+	url = https://github.com/TheLartians/Visitor.git
+  
