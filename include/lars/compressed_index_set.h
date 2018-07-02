@@ -33,7 +33,7 @@ namespace lars{
     
     Iterator begin()const{ Iterator it; it.it = index_ranges().begin(); return it; }
     Iterator end()const{ Iterator it; it.it = index_ranges().end(); return it; }
-    size_t count()const{ size_t res = 0; for(auto i UNUSED:*this) res++; return res;  }
+    size_t count()const{ size_t res = 0; for(auto r:this->index_ranges()) res += r.last - r.first + 1; return res;  }
     
     void insert_index_range(Index first,Index last);
     void remove_index_range(Index first,Index last);
