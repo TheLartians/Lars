@@ -30,7 +30,7 @@ namespace lars {
   }
   
   template <typename T> bool are_approximately_equal(T a, T b, T epsilon = std::numeric_limits<T>::epsilon()){
-    if(!std::isfinite<T>(a) || !std::isfinite<T>(b)) return a == b;
+    if(!std::isfinite(a) || !std::isfinite(b)) return a == b;
     return lars::abs(a - b) <= ( lars::max(lars::abs(a),lars::abs(b)) * epsilon);
   }
 
