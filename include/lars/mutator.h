@@ -4,7 +4,7 @@
 
 namespace lars{
   namespace mutator_helper{
-    template <class T,typename ... Args> T initialize(const Args & ... args){
+    template <class T,typename ... Args> T initialize(Args && ... args){
       return T(args...);
     }
   }
