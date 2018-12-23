@@ -26,4 +26,14 @@ int main(){
   std::cout << d.get<std::shared_ptr<Base>>()->a << std::endl;
   std::cout << d.get<std::shared_ptr<Derived>>()->b << std::endl;
   std::cout << d.get<Derived>().b << std::endl;
+  
+  lars::AnyFunction f = [](Derived &d){ std::cout << d.b << std::endl; };
+  f(d);
+  f(d.get<Derived>());
+  lars::AnyFunction g = [](const Base &d){ std::cout << d.a << std::endl; };
+  g(d);
+  g(d.get<Derived>());
+  g(d.get<Base>());
+  lars::AnyFunction h = [](const std::shared_ptr<Derived> &d){ std::cout << d->a << std::endl; };
+  h(d);
 }
