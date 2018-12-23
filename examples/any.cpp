@@ -36,4 +36,8 @@ int main(){
   g(d.get<Base>());
   lars::AnyFunction h = [](const std::shared_ptr<Derived> &d){ std::cout << d->a << std::endl; };
   h(d);
+  
+  Any n = make_any<double>(0);
+  std::cout << n.get<unsigned int>() << std::endl;
+
 }
