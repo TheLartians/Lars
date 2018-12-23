@@ -43,6 +43,8 @@ namespace lars {
   };
 
   template <typename Vector> struct Curve{
+    Vector to;
+    Curve(const Vector &to):to(to){ }
     virtual void accept(PathVisitor<Vector> * v) = 0;
     virtual void accept(ConstPathVisitor<Vector> * v) const = 0;
     virtual ~Curve(){}
@@ -50,23 +52,22 @@ namespace lars {
   
   namespace curves{
     template <typename Vector> struct Line:public Curve<Vector>{
-      Vector to;
       Line(const Line &other) = default;
-      Line(const Vector &to):to(to){}
+      Line(const Vector &to):Curve<Vector>(to){ }
       void accept(PathVisitor<Vector> * v) { v->visit(this); }
       void accept(ConstPathVisitor<Vector> * v)const{ v->visit(this); }
     };
     template <typename Vector> struct Conic:public Curve<Vector>{
-      Vector to,control;
+      Vector control;
       Conic(const Conic &other) = default;
-      Conic(const Vector &control,const Vector &to):to(to),control(control){}
+      Conic(const Vector &control,const Vector &to):Curve<Vector>(to),control(control){}
       void accept(PathVisitor<Vector> * v) { v->visit(this); }
       void accept(ConstPathVisitor<Vector> * v)const{ v->visit(this); }
     };
     template <typename Vector> struct Cubic:public Curve<Vector>{
-      Vector to,control_1,control_2;
+      Vector control_1,control_2;
       Cubic(const Cubic &other) = default;
-      Cubic(const Vector &control_1,const Vector &control_2,const Vector &to):to(to),control_1(control_1),control_2(control_2){}
+      Cubic(const Vector &control_1,const Vector &control_2,const Vector &to):Curve<Vector>(to),control_1(control_1),control_2(control_2){}
       void accept(PathVisitor<Vector> * v) { v->visit(this); }
       void accept(ConstPathVisitor<Vector> * v)const{ v->visit(this); }
     };
@@ -139,6 +140,11 @@ namespace lars {
       PathVisitors::TranslateVisitor<Vector> v(x);
       v.visit(this);
       return *this;
+    }
+    
+    Vector endpoint(){
+      if(this->size() == 0) return start;
+      return this->back()->to;
     }
     
   };
